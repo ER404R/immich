@@ -149,7 +149,7 @@ run = "flutter build appbundle"
 [tasks."build:fork-apk"]
 description = "Build the fork APK with the CI version"
 run = '''
-set -euo pipefail
+set -eu
 test -s android/key.jks
 : "${FORK_VERSION:?FORK_VERSION must be set}"
 : "${FORK_BUILD_NUMBER:?FORK_BUILD_NUMBER must be set}"
