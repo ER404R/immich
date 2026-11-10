@@ -147,7 +147,7 @@ description = "Build Android release"
 run = "flutter build appbundle"
 
 [tasks."build:fork-apk"]
-description = "Build the fork APK with the CI version"
+description = "Build the ARM64 fork APK for the Nothing Phone (3a) Pro"
 run = '''
 set -eu
 test -s android/key.jks
@@ -156,7 +156,22 @@ test -s android/key.jks
 : "${ALIAS:?ALIAS must be set}"
 : "${ANDROID_KEY_PASSWORD:?ANDROID_KEY_PASSWORD must be set}"
 : "${ANDROID_STORE_PASSWORD:?ANDROID_STORE_PASSWORD must be set}"
-flutter build apk --release --build-name="$FORK_VERSION" --build-number="$FORK_BUILD_NUMBER"
+flutter build apk --release --split-per-abi --target-platform android-arm64 --android-project-arg=force-version-code-ignoring-abi=true --build-name="$FORK_VERSION" --build-number="$FORK_BUILD_NUMBER"
+'''
+
+[tasks."verify:fork-apk"]
+description = "Verify the release APK contains only ARM64 native libraries"
+run = '''
+set -eu
+apk_path=build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+test -s "$apk_path"
+unzip -tq "$apk_path" > /dev/null
+native_abis=$(unzip -Z1 "$apk_path" | awk -F/ '$1 == "lib" && $2 != "" { print $2 }' | sort -u)
+if [ "$native_abis" != arm64-v8a ]; then
+  printf 'Expected only arm64-v8a native libraries, found: %s\n' "$native_abis" >&2
+  exit 1
+fi
+du -h "$apk_path"
 '''
 
 [tasks.install]

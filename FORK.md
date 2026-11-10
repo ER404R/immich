@@ -118,16 +118,30 @@ and builds use the repository's pinned tools through mise. The paid DCM analyzer
 is not part of this fork workflow. These checks cover the mobile app and native
 core; they do not replace server/web tests or testing on a real phone.
 
-After checks pass on `personal`, CI builds one universal release APK, signs it
-with your key and publishes `immich-er404r.apk` to a GitHub release. Pull requests
+After checks pass on `personal`, CI builds one ARM64-only release APK for the
+Nothing Phone (3a) Pro, signs it with your key and publishes `immich-er404r.apk`
+to a GitHub release. It verifies that the APK contains only `arm64-v8a` native
+libraries before uploading. Pull requests
 run checks without signing secrets or publishing releases. Other branches can
 run the checks through the manual workflow trigger.
+
+The Nothing Phone (3a) Pro uses the Snapdragon 7s Gen 3, a 64-bit ARM processor.
+Building only for `arm64-v8a` removes the unused 32-bit ARM and x86-64 code from
+the old universal APK. This reduces the download size without removing features.
+Other ARM64 phones can use the same APK; 32-bit devices and x86-64 emulators need
+a separate build. The normal local debug workflow still supports emulators.
+
+The package ID, signing key and release asset filename are unchanged. Existing
+Obtainium installations can update directly from the universal APK to the ARM64
+APK without uninstalling the app. The exact size is reported by each CI build.
 
 The release tag matches the APK's version name, for example
 `3.4.0-rc.0-fork.12.1`. The upstream prefix is preserved for the app's server
 compatibility checks. The Android version code is `run_number * 100 + run_attempt`
-and increases with successive workflow runs. Reruns have distinct versions;
-attempts of 100 or greater are rejected. Do not rerun an old workflow after a
+and increases with successive workflow runs. The ARM64 build disables Flutter's
+per-ABI version-code offset to preserve this counter when moving from universal
+APKs. Reruns have distinct versions; attempts of 100 or greater are rejected.
+Do not rerun an old workflow after a
 newer version has been published, rename/delete this workflow to reset its run
 counter, or change the application ID or signing key after installation.
 
