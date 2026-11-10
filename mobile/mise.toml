@@ -146,6 +146,19 @@ run = "dart format --set-exit-if-changed $(find lib -name '*.dart' -not \\( -nam
 description = "Build Android release"
 run = "flutter build appbundle"
 
+[tasks."build:fork-apk"]
+description = "Build the fork APK with the CI version"
+run = '''
+set -euo pipefail
+test -s android/key.jks
+: "${FORK_VERSION:?FORK_VERSION must be set}"
+: "${FORK_BUILD_NUMBER:?FORK_BUILD_NUMBER must be set}"
+: "${ALIAS:?ALIAS must be set}"
+: "${ANDROID_KEY_PASSWORD:?ANDROID_KEY_PASSWORD must be set}"
+: "${ANDROID_STORE_PASSWORD:?ANDROID_STORE_PASSWORD must be set}"
+flutter build apk --release --build-name="$FORK_VERSION" --build-number="$FORK_BUILD_NUMBER"
+'''
+
 [tasks.install]
 alias = "install"
 description = "Install flutter dependencies"

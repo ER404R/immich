@@ -15,6 +15,16 @@ Immich monorepo: `server/` (NestJS API + job workers), `web/` (SvelteKit SPA), `
 - Sharing/asset ownership and external libraries are feature-frozen: bug fixes only.
 - Renaming or removing a docs page requires an entry in `docs/static/_redirects`.
 
+## Personal Android fork
+
+- This fork targets `ER404R/immich`; `personal` is the Android release branch; keep `main` available for upstream tracking. Setup and update instructions live in `FORK.md`.
+- `.github/workflows/fork-android.yml` runs the existing mobile tests, Dart analysis, formatting and native tests on pushes to and pull requests targeting `personal`; only successful builds on `personal` publish APK releases for Obtainium.
+- Preserve Android application ID `app.alextran.immich.er404r` and launcher name `Immich-E`. Keep the Kotlin namespace `app.alextran.immich` so existing platform classes and bindings continue to resolve.
+- Release APKs must use the permanent signing key in repository secrets. Never publish debug-signed releases, commit signing material or reset the fork workflow's version counter.
+- Local signing backups belong in `.fork-private/`, which is git-ignored. Keep that directory private and back it up outside this checkout; never print its credentials.
+- Keep the upstream version prefix for server compatibility; CI adds the fork version suffix and an increasing Android version code. Do not hand-edit `mobile/pubspec.yaml` for each fork build.
+- Keep fork setup instructions and these conventions current as the release process changes. Upstream contribution restrictions above still apply to contributions sent upstream.
+
 ## Skills
 
 - **Regenerate the API clients**: after any change to a server controller or DTO, run `mise //:open-api`. It rebuilds the server, rewrites the OpenAPI spec, regenerates the TypeScript SDK and the Dart client. The CI job "OpenAPI Clients" fails if this is stale. If a response field became required, the Dart client also needs a backward-compatibility patch in `open-api/patch`, checked by `flutter test test/openapi_patches_coverage.dart` (job "check-mobile-patches").

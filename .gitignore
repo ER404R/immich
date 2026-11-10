@@ -6,6 +6,7 @@
 !.vscode/extensions.json
 .idea
 .scratch
+/.fork-private/
 
 docker/upload
 docker/library
