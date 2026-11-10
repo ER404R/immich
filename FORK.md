@@ -6,8 +6,9 @@ its own login, database, permissions and backup settings.
 
 Use `personal` for the customized app and releases. Keep `main` available to track
 upstream, and start any upstream contribution on a separate branch from `main`.
-Merge upstream updates into `personal` deliberately, especially when the mobile
-app requires a newer server version. Keep this guide and `AGENTS.md` current.
+Official stable releases can be merged automatically using the workflow below.
+Keep the server compatible with the updated mobile app. Keep this guide and
+`AGENTS.md` current.
 
 ## One-time GitHub setup
 
@@ -16,7 +17,7 @@ app requires a newer server version. Keep this guide and `AGENTS.md` current.
    This makes the manual workflow trigger available while `main` remains your
    upstream tracking branch.
 2. In the Actions tab, disable inherited upstream workflows for this personal
-   fork. Leave **Fork Android** enabled. Upstream workflows depend on Immich's
+   fork. Leave **Fork Android** and **Sync Official Releases** enabled. Upstream workflows depend on Immich's
    private GitHub App credentials, custom runners and publishing infrastructure.
    Their files remain available for reference and upstream merges.
 3. Generate a dedicated permanent signing key on your own computer with a JDK:
@@ -56,6 +57,58 @@ app requires a newer server version. Keep this guide and `AGENTS.md` current.
 5. Run **Fork Android** manually against `personal`, or push another commit to
    that branch. No personal access token or Play Store account is needed by the
    workflow; its release job uses GitHub's automatic token with `contents: write`.
+
+## Automatic upstream updates
+
+**Sync Official Releases** checks `immich-app/immich` every 30 minutes and can
+also be run manually on `personal`. Scheduled runs require `personal` to be the
+fork's default branch and this workflow to have been merged and pushed there.
+GitHub can delay scheduled runs or disable schedules after prolonged repository
+inactivity; check the Actions tab if updates stop arriving.
+
+It selects official `vMAJOR.MINOR.PATCH` releases, excluding drafts and
+prereleases. It fast-forwards `main` to the release commit and merges that commit
+into `personal`, preserving personal changes. Both branches are pushed atomically
+without force. Conflicts, divergent history on `main`, branch protection failures
+or concurrent incompatible pushes stop the sync without updating either branch.
+Resolve the failure manually before rerunning it.
+
+The sync uses the dedicated write-enabled deploy key **Immich-E upstream release
+sync**, restricted to `ER404R/immich`. Its private key is the Actions secret
+`UPSTREAM_SYNC_SSH_KEY`. This permits upstream workflow-file updates and triggers
+the normal Fork Android push workflow, which tests, builds and signs the new APK.
+GitHub's automatic token suppresses push-triggered workflows, so it is not used
+for the sync push. The deploy key is unrelated to Android signing and your
+personal password-protected SSH key.
+
+Automated setup keeps the local deploy-key backup in `.fork-private/`.
+For manual setup, generate a dedicated key, add its public half under repository
+**Settings → Deploy keys** with write access, and upload its private half as
+`UPSTREAM_SYNC_SSH_KEY`. Never add your personal SSH private key to Actions.
+
+Only one outstanding release is merged per run, oldest first, so missed releases
+can be processed in order. Already-merged releases produce no push or APK.
+Versions older than the mobile version on either branch are skipped to avoid
+downgrades. This checkout began at `3.4.0-rc.0`, so it waits for stable `3.4.0`
+or later rather than merging the older `3.3.x` line.
+
+Each successful sync starts the existing APK pipeline. The next sync waits for
+that pipeline to finish successfully on the current `personal` commit before
+merging another release, so queued updates cannot replace one another's builds.
+Failed tests or builds
+leave the synced source branches in place and do not publish a release. After
+fixing a build failure, push the fix to `personal` to retry. A successful APK
+release appears in Obtainium as usual; server upgrades remain your responsibility.
+
+Keep inherited upstream workflows disabled. Review new workflow files introduced
+by future upstream releases, since those may require disabling as well.
+
+Validate changes to this automation with:
+
+```sh
+mise //.github:test:release-sync
+mise //.github:lint:fork-workflow
+```
 
 ## Checks and releases
 
