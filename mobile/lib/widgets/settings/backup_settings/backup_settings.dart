@@ -230,10 +230,11 @@ class _BackupOnlyWhenChargingButton extends ConsumerWidget {
 class _BackupDelaySlider extends ConsumerWidget {
   const _BackupDelaySlider();
 
-  static int backupDelayToSliderValue(int ms) => switch (ms) {
+  static int backupDelayToSliderValue(int seconds) => switch (seconds) {
     5 => 0,
     30 => 1,
     120 => 2,
+    18000 => 4,
     _ => 3,
   };
 
@@ -241,6 +242,7 @@ class _BackupDelaySlider extends ConsumerWidget {
     0 => 5,
     1 => 30,
     2 => 120,
+    4 => const Duration(hours: 5).inSeconds,
     _ => 600,
   };
 
@@ -248,6 +250,7 @@ class _BackupDelaySlider extends ConsumerWidget {
     0 => context.t.setting_notifications_notify_seconds(count: 5),
     1 => context.t.setting_notifications_notify_seconds(count: 30),
     2 => context.t.setting_notifications_notify_minutes(count: 2),
+    4 => context.t.setting_notifications_notify_hours(count: 5),
     _ => context.t.setting_notifications_notify_minutes(count: 10),
   };
 
@@ -276,10 +279,11 @@ class _BackupDelaySlider extends ConsumerWidget {
           onChangeEnd: (double v) async {
             final seconds = backupDelayToSeconds(v.toInt());
             await ref.read(settingsProvider).write(SettingsKey.backupTriggerDelay, seconds);
+            await ref.read(backgroundWorkerFgServiceProvider).configure(minimumDelaySeconds: seconds);
           },
-          max: 3.0,
+          max: 4.0,
           min: 0.0,
-          divisions: 3,
+          divisions: 4,
           label: formatBackupDelaySliderValue(context, currentValue),
         ),
       ],

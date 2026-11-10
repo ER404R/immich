@@ -23,6 +23,7 @@ Immich monorepo: `server/` (NestJS API + job workers), `web/` (SvelteKit SPA), `
 - Release APKs must use the permanent signing key in repository secrets. Never publish debug-signed releases, commit signing material or reset the fork workflow's version counter.
 - Local signing backups belong in `.fork-private/`, which is git-ignored. Keep that directory private and back it up outside this checkout; never print its credentials.
 - Keep the upstream version prefix for server compatibility; CI adds the fork version suffix and an increasing Android version code. Do not hand-edit `mobile/pubspec.yaml` for each fork build.
+- Android's backup delay slider includes a five-hour option, stored as 18,000 seconds. Preserve that value when handling legacy millisecond settings. This setting delays the media-change background trigger; it is not a minimum age for assets uploaded by foreground or periodic backups.
 - Keep fork setup instructions and these conventions current as the release process changes. Upstream contribution restrictions above still apply to contributions sent upstream.
 
 ## Skills
