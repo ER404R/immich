@@ -1,0 +1,36 @@
+name: Sync Official Releases
+
+on:
+  schedule:
+    - cron: '17,47 * * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: sync-official-releases
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository == 'ER404R/immich' && github.ref == 'refs/heads/personal'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check sync credential
+        env:
+          SYNC_KEY: ${{ secrets.UPSTREAM_SYNC_SSH_KEY }}
+        run: test -n "$SYNC_KEY" || { echo 'Configure UPSTREAM_SYNC_SSH_KEY as described in FORK.md.'; exit 1; }
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: personal
+          fetch-depth: 0
+          ssh-key: ${{ secrets.UPSTREAM_SYNC_SSH_KEY }}
+
+      - name: Merge next official release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/sync_upstream_release.py

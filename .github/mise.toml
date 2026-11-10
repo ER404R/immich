@@ -10,5 +10,10 @@ env._.path = "./node_modules/.bin"
 run = "prettier --write ."
 
 [tasks."lint:fork-workflow"]
-description = "Validate the personal Android workflow"
-run = "mise x github:rhysd/actionlint@1.7.7 -- actionlint workflows/fork-android.yml"
+description = "Validate the personal Android and upstream sync workflows"
+run = "mise x github:rhysd/actionlint@1.7.7 -- actionlint workflows/fork-android.yml workflows/sync-upstream-release.yml"
+
+[tasks."test:release-sync"]
+description = "Test official release selection and Git synchronization"
+env.PYTHONDONTWRITEBYTECODE = "1"
+run = "python3 -m unittest discover -s scripts -p test_sync_upstream_release.py"

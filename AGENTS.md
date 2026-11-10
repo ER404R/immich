@@ -24,6 +24,9 @@ Immich monorepo: `server/` (NestJS API + job workers), `web/` (SvelteKit SPA), `
 - Local signing backups belong in `.fork-private/`, which is git-ignored. Keep that directory private and back it up outside this checkout; never print its credentials.
 - Keep the upstream version prefix for server compatibility; CI adds the fork version suffix and an increasing Android version code. Do not hand-edit `mobile/pubspec.yaml` for each fork build.
 - Keep fork setup instructions and these conventions current as the release process changes. Upstream contribution restrictions above still apply to contributions sent upstream.
+- `.github/workflows/sync-upstream-release.yml` checks official stable releases every 30 minutes from default branch `personal`. Its repository-scoped deploy key is stored as `UPSTREAM_SYNC_SSH_KEY`; keep this separate from APK signing credentials.
+- Release sync fast-forwards `main` and merges into `personal`, then pushes both atomically without force. Skip prereleases, drafts, already-merged tags and versions older than either branch. Wait for Fork Android to pass on the current `personal` commit before advancing to another release. Preserve failures for manual conflict resolution. The deploy-key push triggers Fork Android normally.
+- Verify release sync with `mise //.github:test:release-sync` and `mise //.github:lint:fork-workflow`. The tests use temporary local Git repositories and never push to GitHub.
 
 ## Skills
 
