@@ -17,8 +17,8 @@ Immich monorepo: `server/` (NestJS API + job workers), `web/` (SvelteKit SPA), `
 
 ## Personal Android fork
 
-- This fork targets `ER404R/immich`; `personal` is the Android release branch; keep `main` available for upstream tracking. Setup and update instructions live in `FORK.md`.
-- `.github/workflows/fork-android.yml` runs the existing mobile tests, Dart analysis, formatting and native tests on pushes to and pull requests targeting `personal`; only successful builds on `personal` publish APK releases for Obtainium.
+- This fork targets `ER404R/immich`; `main` is the sole maintained Android release branch; merge only official stable release tags automatically. Setup and update instructions live in `FORK.md`.
+- `.github/workflows/fork-android.yml` runs the existing mobile tests, Dart analysis, formatting and native tests on pushes to and pull requests targeting `main`; only successful builds on `main` publish APK releases for Obtainium.
 - Preserve Android application ID `app.alextran.immich.er404r` and launcher name `Immich-E`. Keep the Kotlin namespace `app.alextran.immich` so existing platform classes and bindings continue to resolve.
 - Release APKs target `arm64-v8a` for the Nothing Phone (3a) Pro. Build with `--split-per-abi --target-platform android-arm64` and `--android-project-arg=force-version-code-ignoring-abi=true` to preserve CI version codes. Verify the APK with `mise //mobile:verify:fork-apk` and keep the release asset name `immich-er404r.apk` stable for existing Obtainium installations. Emulator/debug builds can still use other architectures.
 - Release APKs must use the permanent signing key in repository secrets. Never publish debug-signed releases, commit signing material or reset the fork workflow's version counter.
@@ -26,8 +26,8 @@ Immich monorepo: `server/` (NestJS API + job workers), `web/` (SvelteKit SPA), `
 - Keep the upstream version prefix for server compatibility; CI adds the fork version suffix and an increasing Android version code. Do not hand-edit `mobile/pubspec.yaml` for each fork build.
 - Android's backup delay slider includes a five-hour option, stored as 18,000 seconds. Preserve that value when handling legacy millisecond settings. This setting delays the media-change background trigger; it is not a minimum age for assets uploaded by foreground or periodic backups.
 - Keep fork setup instructions and these conventions current as the release process changes. Upstream contribution restrictions above still apply to contributions sent upstream.
-- `.github/workflows/sync-upstream-release.yml` checks official stable releases every 30 minutes from default branch `personal`. Its repository-scoped deploy key is stored as `UPSTREAM_SYNC_SSH_KEY`; keep this separate from APK signing credentials.
-- Release sync fast-forwards `main` and merges into `personal`, then pushes both atomically without force. Skip prereleases, drafts, already-merged tags and versions older than either branch. Wait for Fork Android to pass on the current `personal` commit before advancing to another release. Preserve failures for manual conflict resolution. The deploy-key push triggers Fork Android normally.
+- `.github/workflows/sync-upstream-release.yml` checks official stable releases every 30 minutes from default branch `main`. Its repository-scoped deploy key is stored as `UPSTREAM_SYNC_SSH_KEY`; keep this separate from APK signing credentials.
+- Release sync merges the next official stable release tag into `main` and pushes without force. No new release means no push or APK build. Skip prereleases, drafts, already-merged tags and versions older than the current mobile version. Wait for Fork Android to pass on the current `main` commit before advancing to another release. Preserve failures for manual conflict resolution. The deploy-key push triggers Fork Android normally.
 - Verify release sync with `mise //.github:test:release-sync` and `mise //.github:lint:fork-workflow`. The tests use temporary local Git repositories and never push to GitHub.
 
 ## Skills

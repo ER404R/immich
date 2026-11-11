@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   sync:
-    if: github.repository == 'ER404R/immich' && github.ref == 'refs/heads/personal'
+    if: github.repository == 'ER404R/immich' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -26,7 +26,7 @@ jobs:
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: personal
+          ref: main
           fetch-depth: 0
           ssh-key: ${{ secrets.UPSTREAM_SYNC_SSH_KEY }}
 

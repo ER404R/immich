@@ -4,18 +4,17 @@ This fork installs as **Immich-E**, with Android application ID
 `app.alextran.immich.er404r`. It can coexist with the official app. Each app has
 its own login, database, permissions and backup settings.
 
-Use `personal` for the customized app and releases. Keep `main` available to track
-upstream, and start any upstream contribution on a separate branch from `main`.
+Use `main` for the customized app and releases. Automatic updates merge only
+official stable release tags, never upstream development-branch updates.
 Official stable releases can be merged automatically using the workflow below.
 Keep the server compatible with the updated mobile app. Keep this guide and
 `AGENTS.md` current.
 
 ## One-time GitHub setup
 
-1. Push the fork changes to `personal`, set the fork's default branch to
-   `personal` under repository settings, and enable GitHub Actions in the fork.
-   This makes the manual workflow trigger available while `main` remains your
-   upstream tracking branch.
+1. Push the fork changes to `main`, set the fork's default branch to
+   `main` under repository settings, and enable GitHub Actions in the fork.
+   This makes scheduled and manual workflows available on the release branch.
 2. In the Actions tab, disable inherited upstream workflows for this personal
    fork. Leave **Fork Android** and **Sync Official Releases** enabled. Upstream workflows depend on Immich's
    private GitHub App credentials, custom runners and publishing infrastructure.
@@ -54,24 +53,24 @@ Keep the server compatible with the updated mobile app. Keep this guide and
    gh secret set ANDROID_KEY_PASSWORD --repo ER404R/immich
    ```
 
-5. Run **Fork Android** manually against `personal`, or push another commit to
+5. Run **Fork Android** manually against `main`, or push another commit to
    that branch. No personal access token or Play Store account is needed by the
    workflow; its release job uses GitHub's automatic token with `contents: write`.
 
 ## Automatic upstream updates
 
 **Sync Official Releases** checks `immich-app/immich` every 30 minutes and can
-also be run manually on `personal`. Scheduled runs require `personal` to be the
+also be run manually on `main`. Scheduled runs require `main` to be the
 fork's default branch and this workflow to have been merged and pushed there.
 GitHub can delay scheduled runs or disable schedules after prolonged repository
 inactivity; check the Actions tab if updates stop arriving.
 
 It selects official `vMAJOR.MINOR.PATCH` releases, excluding drafts and
-prereleases. It fast-forwards `main` to the release commit and merges that commit
-into `personal`, preserving personal changes. Both branches are pushed atomically
-without force. Conflicts, divergent history on `main`, branch protection failures
-or concurrent incompatible pushes stop the sync without updating either branch.
-Resolve the failure manually before rerunning it.
+prereleases. It merges the release tag into `main`, preserving custom changes,
+and pushes without force. Diverging history is handled by a normal merge.
+Conflicts, branch protection failures or concurrent incompatible pushes stop
+the sync without updating the remote branch. Resolve the failure manually
+before rerunning it. Checks without a new release do not push or build an APK.
 
 The sync uses the dedicated write-enabled deploy key **Immich-E upstream release
 sync**, restricted to `ER404R/immich`. Its private key is the Actions secret
@@ -88,16 +87,16 @@ For manual setup, generate a dedicated key, add its public half under repository
 
 Only one outstanding release is merged per run, oldest first, so missed releases
 can be processed in order. Already-merged releases produce no push or APK.
-Versions older than the mobile version on either branch are skipped to avoid
+Versions older than the mobile version on main are skipped to avoid
 downgrades. This checkout began at `3.4.0-rc.0`, so it waits for stable `3.4.0`
 or later rather than merging the older `3.3.x` line.
 
 Each successful sync starts the existing APK pipeline. The next sync waits for
-that pipeline to finish successfully on the current `personal` commit before
+that pipeline to finish successfully on the current `main` commit before
 merging another release, so queued updates cannot replace one another's builds.
 Failed tests or builds
-leave the synced source branches in place and do not publish a release. After
-fixing a build failure, push the fix to `personal` to retry. A successful APK
+leave the synced source branch in place and do not publish a release. After
+fixing a build failure, push the fix to `main` to retry. A successful APK
 release appears in Obtainium as usual; server upgrades remain your responsibility.
 
 Keep inherited upstream workflows disabled. Review new workflow files introduced
@@ -112,13 +111,13 @@ mise //.github:lint:fork-workflow
 
 ## Checks and releases
 
-Pushes to `personal` and pull requests targeting it run the existing Flutter
+Pushes to `main` and pull requests targeting it run the existing Flutter
 tests, Dart analyzer, Dart formatting check and Rust native tests. Code generation
 and builds use the repository's pinned tools through mise. The paid DCM analyzer
 is not part of this fork workflow. These checks cover the mobile app and native
 core; they do not replace server/web tests or testing on a real phone.
 
-After checks pass on `personal`, CI builds one ARM64-only release APK for the
+After checks pass on `main`, CI builds one ARM64-only release APK for the
 Nothing Phone (3a) Pro, signs it with your key and publishes `immich-er404r.apk`
 to a GitHub release. It verifies that the APK contains only `arm64-v8a` native
 libraries before uploading. Pull requests
@@ -145,11 +144,11 @@ Do not rerun an old workflow after a
 newer version has been published, rename/delete this workflow to reset its run
 counter, or change the application ID or signing key after installation.
 
-An active build on `personal` finishes when another commit arrives. GitHub may
+An active build on `main` finishes when another commit arrives. GitHub may
 replace older pending runs with the newest pending run. Failed checks/builds do
 not publish a release. Missing signing secrets fail the build explicitly.
 
-Require the **check-and-build** status check in a GitHub ruleset for `personal`
+Require the **check-and-build** status check in a GitHub ruleset for `main`
 if you want failures to block merges as well as releases. Direct pushes still
 run checks, but GitHub cannot undo a pushed commit when tests fail.
 
@@ -163,7 +162,7 @@ ordinary releases even when the upstream version contains `rc`.
 
 The release tag and installed version name match, so keep normal version-name
 tracking enabled. Allow Android to install apps from Obtainium when prompted.
-Future successful releases on `personal` appear as updates for the fork.
+Future successful releases on `main` appear as updates for the fork.
 
 Log in to your existing Immich server separately in the fork and configure photo
 permissions and backup settings. Test login, browsing, upload, background backup
@@ -171,3 +170,25 @@ and widgets on your phone before relying on it. Shared OAuth callback and Immich
 link schemes may show an Android app chooser when both apps are installed.
 Passkeys and verified links may require server/domain configuration for the new
 package and signing certificate; password login is useful for the first test.
+
+## Migration from personal to main
+
+The local main branch contains the existing fork history and updated workflows.
+This migration preserves existing development commits; merging a stable tag
+does not remove code already present in the fork.
+
+After committing the migration, publish and change the default branch:
+
+```sh
+git push origin main
+gh repo edit ER404R/immich --default-branch main
+```
+
+Wait for Fork Android on main to succeed before removing the old remote branch:
+
+```sh
+git push origin --delete personal
+```
+
+The existing signing secrets, deploy key, workflow filename/version counter and
+Obtainium configuration remain valid. No new credentials are required.

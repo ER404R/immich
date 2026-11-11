@@ -49,10 +49,9 @@ class GitSynchronizationTest(unittest.TestCase):
         self.run_git(root, "clone", "--bare", str(self.upstream), str(self.origin))
         self.run_git(root, "clone", str(self.origin), str(self.work))
         self.configure(self.work)
-        self.run_git(self.work, "switch", "--create", "personal")
         (self.work / "fork.txt").write_text("Immich-E\n")
         self.commit(self.work, "Personal customization")
-        self.run_git(self.work, "push", "origin", "personal")
+        self.run_git(self.work, "push", "origin", "main")
         self.previous_directory = Path.cwd()
         os.chdir(self.work)
         self.addCleanup(os.chdir, self.previous_directory)
@@ -77,16 +76,29 @@ class GitSynchronizationTest(unittest.TestCase):
         return release(tag)
 
     def remote_heads(self):
-        return tuple(self.run_git(self.origin, "rev-parse", ref) for ref in ["main", "personal"])
+        return tuple(self.run_git(self.origin, "rev-parse", ref) for ref in ["main"])
 
-    def test_sync_updates_both_branches_and_preserves_customizations(self):
+    def test_sync_updates_main_and_preserves_customizations(self):
         official = self.upstream_release()
         message = synchronize([official], str(self.upstream))
         self.assertIn("v3.4.0", message)
         self.assertEqual(self.run_git(self.origin, "show", "main:upstream.txt"), "release 3.4.0")
-        self.assertEqual(self.run_git(self.origin, "show", "personal:upstream.txt"), "release 3.4.0")
-        self.assertEqual(self.run_git(self.origin, "show", "personal:fork.txt"), "Immich-E")
-        self.assertNotEqual(*self.remote_heads())
+        self.assertEqual(self.run_git(self.origin, "show", "main:fork.txt"), "Immich-E")
+
+    def test_development_commits_after_release_are_not_merged(self):
+        official = self.upstream_release()
+        (self.upstream / "development-only.txt").write_text("unreleased\n")
+        self.commit(self.upstream, "Unreleased development")
+        synchronize([official], str(self.upstream))
+        files = self.run_git(self.origin, "ls-tree", "--name-only", "main")
+        self.assertNotIn("development-only.txt", files)
+        self.assertEqual(self.run_git(self.origin, "show", "main:upstream.txt"), "release 3.4.0")
+
+    def test_no_stable_release_leaves_main_unchanged(self):
+        before = self.remote_heads()
+        releases = [release("v3.5.0", draft=True), release("v3.6.0-rc.1", prerelease=True)]
+        self.assertIn("No newer", synchronize(releases, str(self.upstream)))
+        self.assertEqual(self.remote_heads(), before)
 
     def test_repeated_sync_does_not_push_or_rebuild(self):
         official = self.upstream_release()
@@ -100,17 +112,17 @@ class GitSynchronizationTest(unittest.TestCase):
         self.assertIn("No newer", synchronize([release("v3.3.6")], str(self.upstream)))
         self.assertEqual(self.remote_heads(), before)
 
-    def test_pending_build_leaves_both_branches_unchanged(self):
+    def test_pending_build_leaves_main_unchanged(self):
         official = self.upstream_release()
         before = self.remote_heads()
-        run = {"head_sha": before[1], "status": "in_progress", "conclusion": None}
+        run = {"head_sha": before[0], "status": "in_progress", "conclusion": None}
         self.assertIn("Waiting for Fork Android", synchronize([official], str(self.upstream), build_runs=[run]))
         self.assertEqual(self.remote_heads(), before)
 
-    def test_merge_conflict_leaves_both_remote_branches_unchanged(self):
+    def test_merge_conflict_leaves_remote_main_unchanged(self):
         (self.work / "upstream.txt").write_text("personal change\n")
         self.commit(self.work, "Personal conflicting customization")
-        self.run_git(self.work, "push", "origin", "personal")
+        self.run_git(self.work, "push", "origin", "main")
         official = self.upstream_release()
         before = self.remote_heads()
         with self.assertRaises(subprocess.CalledProcessError):
@@ -124,14 +136,15 @@ class GitSynchronizationTest(unittest.TestCase):
         self.run_git(self.work, "push", "origin", "main")
         official = self.upstream_release()
         before = self.remote_heads()
-        with self.assertRaises(subprocess.CalledProcessError):
-            synchronize([official], str(self.upstream))
-        self.assertEqual(self.remote_heads(), before)
+        synchronize([official], str(self.upstream))
+        self.assertNotEqual(self.remote_heads(), before)
+        self.assertEqual(self.run_git(self.origin, "show", "main:main-only.txt"), "preserve this commit")
+        self.assertEqual(self.run_git(self.origin, "show", "main:fork.txt"), "Immich-E")
 
-    def test_push_rejection_updates_neither_branch(self):
+    def test_push_rejection_leaves_main_unchanged(self):
         official = self.upstream_release()
         hook = self.origin / "hooks/update"
-        hook.write_text('#!/bin/sh\nif [ "$1" = refs/heads/personal ]; then exit 1; fi\n')
+        hook.write_text('#!/bin/sh\nif [ "$1" = refs/heads/main ]; then exit 1; fi\n')
         hook.chmod(0o755)
         before = self.remote_heads()
         with self.assertRaises(subprocess.CalledProcessError):
@@ -142,7 +155,7 @@ class GitSynchronizationTest(unittest.TestCase):
         first = self.upstream_release("3.4.0")
         second = self.upstream_release("3.5.0")
         self.assertIn("v3.4.0", synchronize([second, first], str(self.upstream)))
-        self.assertEqual(self.run_git(self.origin, "show", "personal:upstream.txt"), "release 3.4.0")
+        self.assertEqual(self.run_git(self.origin, "show", "main:upstream.txt"), "release 3.4.0")
 
 
 if __name__ == "__main__":
