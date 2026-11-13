@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { shortcuts } from '#lib/actions/shortcut.ts';
   import { AssetAction } from '#lib/constants.ts';
   import { featureFlagsManager } from '#lib/managers/feature-flags-manager.svelte.ts';
   import AssetDeleteConfirmModal from '#lib/modals/AssetDeleteConfirmModal.svelte';
@@ -7,7 +8,7 @@
   import { handleError } from '#lib/utils/handle-error.ts';
   import { toTimelineAsset } from '#lib/utils/timeline-util.ts';
   import { deleteAssets, type AssetResponseDto } from '@immich/sdk';
-  import { IconButton, modalManager, shortcuts, toastManager } from '@immich/ui';
+  import { IconButton, modalManager, toastManager } from '@immich/ui';
   import { mdiDeleteForeverOutline, mdiDeleteOutline } from '@mdi/js';
   import { t } from 'svelte-i18n';
   import type { OnAction, PreAction } from './action';
@@ -57,11 +58,11 @@
   };
 </script>
 
-<svelte:window
-  {@attach shortcuts([
+<svelte:document
+  use:shortcuts={[
     { shortcut: { key: 'Delete' }, onShortcut: () => trashOrDelete() },
     { shortcut: { key: 'Delete', shift: true }, onShortcut: () => trashOrDelete(true) },
-  ])}
+  ]}
 />
 
 <IconButton

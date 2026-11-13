@@ -21,7 +21,6 @@ import 'package:immich_mobile/utils/debounce.dart';
 import 'package:immich_mobile/widgets/common/immich_toast.dart';
 import 'package:immich_mobile/widgets/map/map_theme_override.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class CustomSourceProperties implements SourceProperties {
   final Map<String, dynamic> data;
@@ -56,7 +55,6 @@ class _MapViewState extends ConsumerState<MapView> {
   final ValueNotifier<double> bottomSheetOffset = ValueNotifier(0.25);
   final GlobalKey _bottomSheetKey = GlobalKey();
   StreamSubscription? _eventSubscription;
-  MapAttribution? _attribution;
 
   @override
   void initState() {
@@ -83,9 +81,6 @@ class _MapViewState extends ConsumerState<MapView> {
     if (controller == null) {
       return;
     }
-
-    // Start the fetch as soon as possible
-    final attributionLoaded = MapUtils.getAttribution(controller);
 
     await controller.addSource(
       MapUtils.defaultSourceId,
@@ -118,11 +113,6 @@ class _MapViewState extends ConsumerState<MapView> {
 
     _debouncer.run(() => setBounds(forceReload: true));
     controller.addListener(onMapMoved);
-
-    final attribution = await attributionLoaded;
-    if (mounted) {
-      setState(() => _attribution = attribution);
-    }
   }
 
   void onMapMoved() {
@@ -200,11 +190,7 @@ class _MapViewState extends ConsumerState<MapView> {
       children: [
         _Map(initialLocation: widget.initialLocation, onMapCreated: onMapCreated, onMapReady: onMapReady),
         _DynamicBottomSheet(bottomSheetOffset: bottomSheetOffset, sheetKey: _bottomSheetKey),
-        _DynamicBottomButtons(
-          onZoomToLocation: onZoomToLocation,
-          bottomSheetOffset: bottomSheetOffset,
-          attribution: _attribution,
-        ),
+        _DynamicMyLocationButton(onZoomToLocation: onZoomToLocation, bottomSheetOffset: bottomSheetOffset),
       ],
     );
   }
@@ -233,8 +219,8 @@ class _Map extends StatelessWidget {
           styleString: style,
           onMapCreated: onMapCreated,
           onStyleLoadedCallback: onMapReady,
-          // Hide offscreen so we can draw our own
-          attributionButtonMargins: const Point(-200, 0),
+          attributionButtonPosition: AttributionButtonPosition.topRight,
+          attributionButtonMargins: const Point(8, kToolbarHeight),
         ),
       ),
     );
@@ -267,16 +253,11 @@ class _DynamicBottomSheetState extends State<_DynamicBottomSheet> {
   }
 }
 
-class _DynamicBottomButtons extends StatelessWidget {
-  const _DynamicBottomButtons({
-    required this.onZoomToLocation,
-    required this.bottomSheetOffset,
-    required this.attribution,
-  });
+class _DynamicMyLocationButton extends StatelessWidget {
+  const _DynamicMyLocationButton({required this.onZoomToLocation, required this.bottomSheetOffset});
 
   final VoidCallback onZoomToLocation;
   final ValueNotifier<double> bottomSheetOffset;
-  final MapAttribution? attribution;
 
   @override
   Widget build(BuildContext context) {
@@ -284,86 +265,19 @@ class _DynamicBottomButtons extends StatelessWidget {
       valueListenable: bottomSheetOffset,
       builder: (context, offset, child) {
         return Positioned(
-          left: 20,
           right: 20,
           bottom: context.height * (offset - 0.02) + context.padding.bottom,
           child: AnimatedOpacity(
             opacity: offset < 0.8 ? 1 : 0,
             duration: const Duration(milliseconds: 150),
-            child: Row(
-              children: [
-                if (attribution case final attribution?) _AttributionButton(attribution: attribution),
-                const Spacer(),
-                ElevatedButton(
-                  onPressed: onZoomToLocation,
-                  style: ElevatedButton.styleFrom(shape: const CircleBorder()),
-                  child: const Icon(Icons.my_location),
-                ),
-              ],
+            child: ElevatedButton(
+              onPressed: onZoomToLocation,
+              style: ElevatedButton.styleFrom(shape: const CircleBorder()),
+              child: const Icon(Icons.my_location),
             ),
           ),
         );
       },
-    );
-  }
-}
-
-class _AttributionButton extends StatefulWidget {
-  const _AttributionButton({required this.attribution});
-
-  final MapAttribution attribution;
-
-  @override
-  State<_AttributionButton> createState() => _AttributionButtonState();
-}
-
-class _AttributionButtonState extends State<_AttributionButton> {
-  // OSM's attribution guidelines require it to be visible by default
-  bool _expanded = true;
-
-  @override
-  Widget build(BuildContext context) {
-    final (:text, :url) = widget.attribution;
-    return TapRegion(
-      // Any interaction outside of the popup causes it to close
-      onTapOutside: _expanded ? (_) => setState(() => _expanded = false) : null,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ElevatedButton(
-            onPressed: () => setState(() => _expanded = !_expanded),
-            style: ElevatedButton.styleFrom(shape: const CircleBorder()),
-            child: const Icon(Icons.info_outline),
-          ),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 100),
-            child: _expanded
-                ? Material(
-                    // Without a key the transition remotes pill instantly instead of fading it out
-                    key: const ValueKey('attribution'),
-                    color: context.colorScheme.surfaceContainerLow,
-                    elevation: 1,
-                    shape: const StadiumBorder(),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(maxWidth: context.width / 2),
-                      child: TextButton(
-                        onPressed: url == null
-                            ? null
-                            : () => unawaited(launchUrl(url, mode: LaunchMode.externalApplication)),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          minimumSize: const Size(0, 40),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          disabledForegroundColor: context.colorScheme.onSurface,
-                        ),
-                        child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
-                      ),
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-        ],
-      ),
     );
   }
 }

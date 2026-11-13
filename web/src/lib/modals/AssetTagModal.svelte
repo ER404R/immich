@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { executeMutation, queryClient } from '#lib/queries/client.ts';
-  import { bulkTagAssetsMutation, getAllTagsQuery, upsertTagsMutation } from '#lib/queries/tag.query.ts';
-  import { FormModal, toastManager } from '@immich/ui';
+  import { handleTagAssets } from '#lib/services/asset.service.ts';
+  import { getAllTags, upsertTags, type TagResponseDto } from '@immich/sdk';
+  import { FormModal } from '@immich/ui';
   import { mdiTag } from '@mdi/js';
-  import { createQuery } from '@tanstack/svelte-query';
+  import { onMount } from 'svelte';
   import { t } from 'svelte-i18n';
   import { SvelteSet } from 'svelte/reactivity';
   import Combobox, { type ComboBoxOption } from '../components/shared-components/Combobox.svelte';
@@ -16,24 +16,24 @@
 
   let { onClose, assetIds }: Props = $props();
 
-  const query = createQuery(getAllTagsQuery, () => queryClient);
-  const allTags = $derived(query.data ?? []);
+  let allTags: TagResponseDto[] = $state([]);
   let tagMap = $derived(Object.fromEntries(allTags.map((tag) => [tag.id, tag])));
   let selectedIds = new SvelteSet<string>();
   let disabled = $derived(selectedIds.size === 0);
   let allowCreate: boolean = $state(true);
+
+  onMount(async () => {
+    allTags = await getAllTags();
+  });
 
   const onSubmit = async () => {
     if (selectedIds.size === 0) {
       return;
     }
 
-    await executeMutation(bulkTagAssetsMutation, [{ tagBulkAssetsDto: { assetIds, tagIds: [...selectedIds] } }], {
-      onSuccess: ({ count }) => {
-        toastManager.primary($t('tagged_assets', { values: { count } }));
-        onClose(true);
-      },
-    });
+    if (await handleTagAssets(assetIds, [...selectedIds])) {
+      onClose(true);
+    }
   };
 
   const handleSelect = async (option?: ComboBoxOption) => {
@@ -43,12 +43,11 @@
 
     if (option.id) {
       selectedIds.add(option.value);
-      return;
+    } else {
+      const [newTag] = await upsertTags({ tagUpsertDto: { tags: [option.label] } });
+      allTags.push(newTag);
+      selectedIds.add(newTag.id);
     }
-
-    await executeMutation(upsertTagsMutation, [{ tagUpsertDto: { tags: [option.label] } }], {
-      onSuccess: ([newTag]) => selectedIds.add(newTag.id),
-    });
   };
 
   const handleRemove = (tag: string) => {

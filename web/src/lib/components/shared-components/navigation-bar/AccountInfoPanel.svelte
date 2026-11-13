@@ -28,7 +28,7 @@
   out:fade={{ duration: 100 }}
   id="account-info-panel"
   class="absolute inset-e-6 top-19 z-1 w-[min(360px,100vw-50px)] rounded-3xl bg-gray-200 shadow-lg dark:border dark:border-immich-dark-gray dark:bg-immich-dark-gray"
-  {@attach focusTrap()}
+  use:focusTrap
 >
   <div
     class="mx-4 mt-4 flex flex-col items-center justify-center gap-4 rounded-t-3xl bg-white p-4 dark:bg-immich-dark-primary/10"

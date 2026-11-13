@@ -1,5 +1,6 @@
 <script lang="ts">
   import { scrollMemoryClearer } from '#lib/actions/scroll-memory.svelte.ts';
+  import { shortcuts } from '#lib/actions/shortcut.ts';
   import ActionMenuItem from '#lib/components/ActionMenuItem.svelte';
   import OnEvents from '#lib/components/OnEvents.svelte';
   import BirthdayConfetti from '#lib/components/memories/BirthdayConfetti.svelte';
@@ -24,7 +25,7 @@
   import { getAssetMediaUrl, handlePromiseError, memoryLaneTitle } from '#lib/utils.ts';
   import { fromISODateTimeUTC, toTimelineAsset } from '#lib/utils/timeline-util.ts';
   import { AssetMediaSize, AssetTypeEnum, MemoryType, getAssetInfo } from '@immich/sdk';
-  import { ActionButton, CommandPaletteDefaultProvider, Icon, IconButton, Text, shortcuts } from '@immich/ui';
+  import { ActionButton, CommandPaletteDefaultProvider, Icon, IconButton, Text } from '@immich/ui';
   import {
     mdiCakeVariant,
     mdiCardsOutline,
@@ -261,18 +262,16 @@
   });
 </script>
 
-<svelte:window
-  {@attach shortcuts(
-    assetViewerManager.isViewing
-      ? []
-      : [
-          { shortcut: { key: 'ArrowRight' }, onShortcut: () => handleNavigate(current?.nextHref) },
-          { shortcut: { key: 'd' }, onShortcut: () => handleNavigate(current?.nextHref) },
-          { shortcut: { key: 'ArrowLeft' }, onShortcut: () => handleNavigate(current?.previousHref) },
-          { shortcut: { key: 'a' }, onShortcut: () => handleNavigate(current?.previousHref) },
-          { shortcut: { key: 'Escape' }, onShortcut: () => handleEscape() },
-        ],
-  )}
+<svelte:document
+  use:shortcuts={assetViewerManager.isViewing
+    ? []
+    : [
+        { shortcut: { key: 'ArrowRight' }, onShortcut: () => handleNavigate(current?.nextHref) },
+        { shortcut: { key: 'd' }, onShortcut: () => handleNavigate(current?.nextHref) },
+        { shortcut: { key: 'ArrowLeft' }, onShortcut: () => handleNavigate(current?.previousHref) },
+        { shortcut: { key: 'a' }, onShortcut: () => handleNavigate(current?.previousHref) },
+        { shortcut: { key: 'Escape' }, onShortcut: () => handleEscape() },
+      ]}
 />
 
 <OnEvents onAssetsArchive={handleHideAssets} />

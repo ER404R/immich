@@ -62,7 +62,14 @@ export const showSharedLinkQrCode = async (sharedLink: SharedLinkResponseDto) =>
 
 const handleDeleteSharedLink = async (sharedLink: SharedLinkResponseDto) => {
   const $t = await getFormatter();
-  await executeMutation(removeSharedLinkMutation, [{ id: sharedLink.id }], {
-    confirm: { title: $t('delete_shared_link'), prompt: $t('confirm_delete_shared_link'), confirmText: $t('delete') },
+  const success = await modalManager.showDialog({
+    title: $t('delete_shared_link'),
+    prompt: $t('confirm_delete_shared_link'),
+    confirmText: $t('delete'),
   });
+  if (!success) {
+    return;
+  }
+
+  await executeMutation(removeSharedLinkMutation, [{ id: sharedLink.id }]);
 };

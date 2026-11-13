@@ -1,4 +1,3 @@
-import { assetViewerManager } from '#lib/managers/asset-viewer-manager.svelte.ts';
 import { authManager } from '#lib/managers/auth-manager.svelte.ts';
 import { featureFlagsManager } from '#lib/managers/feature-flags-manager.svelte.ts';
 import { queryClient } from '#lib/queries/client.ts';
@@ -60,7 +59,6 @@ export class Mock {
       cleanup();
       locale.set('default');
       authManager.reset();
-      assetViewerManager.closeActivityPanel();
       queryClient.clear();
       resetPage();
       this.logger.teardown();
@@ -84,7 +82,6 @@ export class Mock {
   async settle() {
     const nextTask = () => new Promise((resolve) => setTimeout(resolve, 0));
     do {
-      await nextTask();
       await nextTask();
     } while (this.api.pending > 0 || queryClient.isMutating() > 0 || queryClient.isFetching() > 0);
     await tick();

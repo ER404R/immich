@@ -9,7 +9,6 @@ import {
   NotNull,
   OperandValueExpression,
   ReferenceExpression,
-  SafeNullComparisonPlugin,
   SelectQueryBuilder,
   Selectable,
   ShallowDehydrateObject,
@@ -63,7 +62,6 @@ export const getKyselyConfig = (connection: DatabaseConnectionParams): KyselyCon
         },
       }),
     }),
-    plugins: [new SafeNullComparisonPlugin()],
     log(event) {
       if (event.level !== 'error') {
         return;

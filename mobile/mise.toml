@@ -1,12 +1,10 @@
 [tools]
 java = "21.0.2"
-ruby = "3.4.12"
 # RUSTUP_TOOLCHAIN makes rustup ignore the targets in rust-toolchain.toml, so the cross targets are listed here too.
-rust = { version = "1.99.1", targets = "aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios" }
-"conda:nasm" = "2.16.03" # assembles rav1d's x86 kernels
+rust = { version = "1.98.0", targets = "aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios" }
 
 [tools."aqua:flutter/flutter"]
-version = "3.47.9"
+version = "3.47.2"
 postinstall = "bash {{config_root}}/ios/scripts/xcode_flutter_patch.sh"
 
 [tools."github:CQLabs/homebrew-dcm"]
@@ -160,7 +158,7 @@ flutter build apk --release --split-per-abi --target-platform android-arm64 --an
 '''
 
 [tasks."verify:fork-apk"]
-description = "Verify the release APK contains only ARM64 native libraries"
+description = "Verify the fork identity and ARM64 native libraries in the release APK"
 run = '''
 set -eu
 apk_path=build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
@@ -171,6 +169,12 @@ if [ "$native_abis" != arm64-v8a ]; then
   printf 'Expected only arm64-v8a native libraries, found: %s\n' "$native_abis" >&2
   exit 1
 fi
+sdk_root=${ANDROID_SDK_ROOT:-${ANDROID_HOME:?Android SDK path must be set}}
+aapt_path=$(printf '%s\n' "$sdk_root"/build-tools/*/aapt | sort -V | tail -n 1)
+test -x "$aapt_path"
+badging=$("$aapt_path" dump badging "$apk_path")
+printf '%s\n' "$badging" | grep -q "^package: name='app.alextran.immich.er404r' "
+printf '%s\n' "$badging" | grep -q "^application-label:'Immich-E'$"
 du -h "$apk_path"
 '''
 

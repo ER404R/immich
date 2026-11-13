@@ -1,5 +1,6 @@
 <script lang="ts">
   import { contextMenuNavigation } from '#lib/actions/context-menu-navigation.ts';
+  import { shortcuts } from '#lib/actions/shortcut.ts';
   import ContextMenu from '#lib/components/shared-components/context-menu/ContextMenu.svelte';
   import { languageManager } from '#lib/managers/language-manager.svelte.ts';
   import { optionClickCallbackStore, selectedIdStore } from '#lib/stores/context-menu.store.ts';
@@ -8,7 +9,7 @@
     getContextMenuPositionFromEvent,
     type Align,
   } from '#lib/utils/context-menu.ts';
-  import { IconButton, shortcuts, type Color, type Size, type Variants } from '@immich/ui';
+  import { IconButton, type Color, type Size, type Variants } from '@immich/ui';
   import type { Snippet } from 'svelte';
   import type { HTMLAttributes } from 'svelte/elements';
 
@@ -137,7 +138,7 @@
 <svelte:document onclick={handleDocumentClick} />
 
 <div
-  {@attach contextMenuNavigation({
+  use:contextMenuNavigation={{
     closeDropdown,
     container: menuContainer,
     isOpen,
@@ -145,7 +146,7 @@
     openDropdown,
     selectedId: $selectedIdStore,
     selectionChanged: (id) => ($selectedIdStore = id),
-  })}
+  }}
   onresize={onResize}
   {...restProps}
 >
@@ -167,7 +168,7 @@
   </div>
   {#if isOpen || !hideContent}
     <div
-      {@attach shortcuts([
+      use:shortcuts={[
         {
           shortcut: { key: 'Tab' },
           onShortcut: closeDropdown,
@@ -178,7 +179,7 @@
           onShortcut: closeDropdown,
           preventDefault: false,
         },
-      ])}
+      ]}
     >
       <ContextMenu
         {direction}

@@ -88,8 +88,8 @@ For manual setup, generate a dedicated key, add its public half under repository
 Only one outstanding release is merged per run, oldest first, so missed releases
 can be processed in order. Already-merged releases produce no push or APK.
 Versions older than the mobile version on main are skipped to avoid
-downgrades. This checkout began at `3.4.0-rc.0`, so it waits for stable `3.4.0`
-or later rather than merging the older `3.3.x` line.
+downgrades. The fork has been reconciled onto stable `v3.4.0` plus our custom changes.
+The stable tag is recorded as a merge parent, so it is not merged again.
 
 Each successful sync starts the existing APK pipeline. The next sync waits for
 that pipeline to finish successfully on the current `main` commit before
@@ -120,7 +120,8 @@ core; they do not replace server/web tests or testing on a real phone.
 After checks pass on `main`, CI builds one ARM64-only release APK for the
 Nothing Phone (3a) Pro, signs it with your key and publishes `immich-er404r.apk`
 to a GitHub release. It verifies that the APK contains only `arm64-v8a` native
-libraries before uploading. Pull requests
+libraries, package ID `app.alextran.immich.er404r` and launcher name `Immich-E`
+before uploading. Pull requests
 run checks without signing secrets or publishing releases. Other branches can
 run the checks through the manual workflow trigger.
 
@@ -174,8 +175,8 @@ package and signing certificate; password login is useful for the first test.
 ## Migration from personal to main
 
 The local main branch contains the existing fork history and updated workflows.
-This migration preserves existing development commits; merging a stable tag
-does not remove code already present in the fork.
+The subsequent stable-baseline reconciliation preserves commit history while
+replacing development-only code with the official stable release tree.
 
 After committing the migration, publish and change the default branch:
 
@@ -192,3 +193,22 @@ git push origin --delete personal
 
 The existing signing secrets, deploy key, workflow filename/version counter and
 Obtainium configuration remain valid. No new credentials are required.
+
+## Maintaining the stable baseline
+
+The v3.4.0 reconciliation uses the official release tree plus our fork changes,
+with both the previous main commit and the official tag recorded as parents.
+It requires a normal push, not a force-push. The large diff against the previous
+main is the removal of development-only differences; the diff against v3.4.0
+contains only our customizations and contributor instructions.
+
+Android identity overrides live in `mobile/android/app/fork.gradle`.
+The upstream `build.gradle` retains its original defaults and loads the fork
+file at the end. This avoids overlapping branding edits when upstream changes
+the defaultConfig block. CI verifies the built APK identity before publication.
+
+Future stable tags are merged normally. Compatible feature changes merge
+automatically; overlapping changes to features such as the five-hour slider
+require manual resolution. An upstream build-system redesign or failing tests
+can still require maintenance. Never resolve feature conflicts automatically
+by always choosing one side.

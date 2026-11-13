@@ -42,7 +42,6 @@ class RemoteImageApiImpl: NSObject, RemoteImageApi {
     kCGImageSourceCreateThumbnailWithTransform: true,
     kCGImageSourceCreateThumbnailFromImageAlways: true
   ]
-  private static let imageIOReadsAvif = (CGImageSourceCopyTypeIdentifiers() as? [String])?.contains("public.avif") == true
 
   func requestImage(url: String, requestId: Int64, preferEncoded: Bool, width: Int64?, height: Int64?, completion: @escaping (Result<[String : Int64]?, any Error>) -> Void) {
     var urlRequest = URLRequest(url: URL(string: url)!)
@@ -75,22 +74,18 @@ class RemoteImageApiImpl: NSObject, RemoteImageApi {
     }
 
     // Flutter can't decode JPEG XL and older iOS versions can't either, so this applies to encoded requests too.
-    // ImageIO can't read AVIF before iOS 16, so it goes to the core there too.
-    if let mime = response?.mimeType, mime == "image/jxl" || mime == "image/avif" {
+    if response?.mimeType == "image/jxl" {
       ImageProcessing.queue.addOperation {
         if request.isCancelled {
           return request.completion(ImageProcessing.cancelledResult)
         }
 
         guard let (width, height, pointer) = NativeCore.decodeImage(data, targetWidth: width, targetHeight: height, maxPixelSize: ImageProcessing.maxPixelSize, cancelled: request.decodeCancelled) else {
-          if mime == "image/avif" && imageIOReadsAvif {
-            return handleWithoutCore(request: request, encoded: encoded, width: width, height: height, data: data)
-          }
           registry.remove(requestId: request.id)
           if request.isCancelled {
             return request.completion(ImageProcessing.cancelledResult)
           }
-          return request.completion(.failure(PigeonError(code: "", message: "Failed to decode \(mime)", details: nil)))
+          return request.completion(.failure(PigeonError(code: "", message: "Failed to decode JPEG XL image", details: nil)))
         }
 
         if request.isCancelled {
@@ -110,10 +105,6 @@ class RemoteImageApiImpl: NSObject, RemoteImageApi {
       return
     }
 
-    handleWithoutCore(request: request, encoded: encoded, width: width, height: height, data: data)
-  }
-
-  private static func handleWithoutCore(request: RemoteImageRequest, encoded: Bool, width: Int64?, height: Int64?, data: Data) {
     if encoded {
       let length = data.count
       let pointer = malloc(length)!

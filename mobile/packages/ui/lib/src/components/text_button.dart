@@ -36,10 +36,6 @@ class _ImmichTextButtonState extends State<ImmichTextButton> {
   bool get _isDisabled => widget.disabled || _isLoading;
 
   Future<void> _runAction(FutureOr<void> Function() action) async {
-    if (_running) {
-      return;
-    }
-
     setState(() => _running = true);
     try {
       await action();

@@ -152,6 +152,7 @@ enum ActionButtonType {
       ActionButtonType.openInfo => true,
       ActionButtonType.viewInTimeline =>
         context.timelineOrigin != TimelineOrigin.main &&
+            context.timelineOrigin != TimelineOrigin.deepLink &&
             context.timelineOrigin != TimelineOrigin.trash &&
             context.timelineOrigin != TimelineOrigin.lockedFolder &&
             context.timelineOrigin != TimelineOrigin.archive &&

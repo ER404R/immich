@@ -26,8 +26,6 @@
   import type { TimelineAsset } from '#lib/managers/timeline-manager/types.ts';
   import PersonEditModal from '#lib/modals/PersonEditModal.svelte';
   import PersonMergeSuggestionModal from '#lib/modals/PersonMergeSuggestionModal.svelte';
-  import { queryClient } from '#lib/queries/client.ts';
-  import { searchPersonQuery } from '#lib/queries/search.query.ts';
   import { Route } from '#lib/route.ts';
   import { getAssetBulkActions } from '#lib/services/asset.service.ts';
   import { getPersonActions, handleUpdatePersonName } from '#lib/services/person.service.ts';
@@ -36,7 +34,7 @@
   import { getPeopleThumbnailUrl } from '#lib/utils.ts';
   import { handleError } from '#lib/utils/handle-error.ts';
   import { normalizeSearchString } from '#lib/utils/string-utils.ts';
-  import { AssetVisibility, updatePerson, type PersonResponseDto } from '@immich/sdk';
+  import { AssetVisibility, searchPerson, updatePerson, type PersonResponseDto } from '@immich/sdk';
   import {
     ActionButton,
     CommandPaletteDefaultProvider,
@@ -243,7 +241,7 @@
       return;
     }
 
-    const result = await queryClient.query(searchPersonQuery({ name: personName, withHidden: true }));
+    const result = await searchPerson({ name: personName, withHidden: true });
 
     const normalizedPersonName = normalizeSearchString(personName);
     const existingPerson = result.find(
@@ -373,11 +371,11 @@
         <!-- Person information block -->
         <div
           class="relative w-fit p-4 pt-12 sm:px-6"
-          {@attach clickOutside({
+          use:clickOutside={{
             onOutclick: handleCancelEditName,
             onEscape: isEditingName ? handleCancelEditName : undefined,
-          })}
-          {@attach listNavigation(suggestionContainer)}
+          }}
+          use:listNavigation={suggestionContainer}
         >
           <section class="flex w-64 place-items-center border-black sm:w-96">
             {#if isEditingName}

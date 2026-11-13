@@ -18594,7 +18594,7 @@
   "info": {
     "title": "Immich",
     "description": "Immich API",
-    "version": "3.4.0-rc.0",
+    "version": "3.4.0",
     "contact": {}
   },
   "tags": [
@@ -26754,7 +26754,8 @@
           "failed",
           "completed",
           "delayed",
-          "waiting"
+          "waiting",
+          "paused"
         ],
         "type": "string"
       },
@@ -34316,6 +34317,11 @@
           },
           "name": {
             "description": "User name",
+            "type": "string"
+          },
+          "password": {
+            "deprecated": true,
+            "description": "User password (deprecated, use change password endpoint)",
             "type": "string"
           }
         },

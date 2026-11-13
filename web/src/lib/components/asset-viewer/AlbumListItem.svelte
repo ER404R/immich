@@ -6,7 +6,7 @@
   import { type AlbumResponseDto } from '@immich/sdk';
   import { Icon } from '@immich/ui';
   import { mdiCheckCircle } from '@mdi/js';
-  import type { Attachment } from 'svelte/attachments';
+  import type { Action } from 'svelte/action';
   import AlbumListItemDetails from './AlbumListItemDetails.svelte';
 
   interface Props {
@@ -27,10 +27,12 @@
     onMultiSelect,
   }: Props = $props();
 
-  const scrollIntoViewIfSelected: Attachment = (node) => {
-    if (selected) {
-      node.scrollIntoView(SCROLL_PROPERTIES);
-    }
+  const scrollIntoViewIfSelected: Action = (node) => {
+    $effect(() => {
+      if (selected) {
+        node.scrollIntoView(SCROLL_PROPERTIES);
+      }
+    });
   };
 
   // This part of the code is responsible for splitting album name into 3 parts where part 2 is the search query
@@ -82,35 +84,34 @@
     }
     disposeables.length = 0;
   };
-  function longPress({ onLongPress }: { onLongPress: () => void }) {
-    return (element: HTMLElement) => {
-      let didPress = false;
-      const start = () => {
-        didPress = false;
-        // 350ms for longpress. For reference: iOS uses 500ms for default long press, or 200ms for fast long press.
-        timer = setTimeout(() => {
-          onLongPress();
-          element.addEventListener('contextmenu', preventContextMenu, { once: true });
-          disposeables.push(() => element.removeEventListener('contextmenu', preventContextMenu));
-          didPress = true;
-        }, 350);
-      };
-      const click = (e: MouseEvent) => {
-        if (!didPress) {
-          return;
-        }
-        e.stopPropagation();
-        e.preventDefault();
-      };
-      element.addEventListener('click', click);
-      element.addEventListener('pointerdown', start, { capture: true });
-      element.addEventListener('pointerup', clearLongPressTimer, { capture: true, passive: true });
-
-      return () => {
+  function longPress(element: HTMLElement, { onLongPress }: { onLongPress: () => void }) {
+    let didPress = false;
+    const start = () => {
+      didPress = false;
+      // 350ms for longpress. For reference: iOS uses 500ms for default long press, or 200ms for fast long press.
+      timer = setTimeout(() => {
+        onLongPress();
+        element.addEventListener('contextmenu', preventContextMenu, { once: true });
+        disposeables.push(() => element.removeEventListener('contextmenu', preventContextMenu));
+        didPress = true;
+      }, 350);
+    };
+    const click = (e: MouseEvent) => {
+      if (!didPress) {
+        return;
+      }
+      e.stopPropagation();
+      e.preventDefault();
+    };
+    element.addEventListener('click', click);
+    element.addEventListener('pointerdown', start, { capture: true });
+    element.addEventListener('pointerup', clearLongPressTimer, { capture: true, passive: true });
+    return {
+      destroy: () => {
         element.removeEventListener('click', click);
         element.removeEventListener('pointerdown', start, true);
         element.removeEventListener('pointerup', clearLongPressTimer, true);
-      };
+      },
     };
   }
 </script>
@@ -127,11 +128,11 @@
   <button
     type="button"
     onclick={onAlbumClick}
-    {@attach scrollIntoViewIfSelected}
+    use:scrollIntoViewIfSelected
     class="flex w-full gap-4 p-2 text-start"
     class:bg-gray-200={selected}
     class:dark:bg-gray-700={selected}
-    {@attach longPress({ onLongPress: () => handleMultiSelectClicked() })}
+    use:longPress={{ onLongPress: () => handleMultiSelectClicked() }}
   >
     <span class="size-16 shrink-0 rounded-xl bg-slate-300">
       {#if album.albumThumbnailAssetId}

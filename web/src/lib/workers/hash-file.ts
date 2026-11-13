@@ -41,6 +41,7 @@ export async function hashFile(file: File): Promise<string> {
   }
 }
 
+// eslint-disable-next-line unicorn/no-top-level-side-effects
 addEventListener('message', (event: MessageEvent<File>) => {
   void hashFile(event.data)
     .then((result) => postMessage({ result }))

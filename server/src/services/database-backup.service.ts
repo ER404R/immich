@@ -534,7 +534,7 @@ function createSqlProgressStreams(cb: (progress: number) => void) {
   let linesSent = 0;
   let linesProcessed = 0;
 
-  const startedAt = Date.now();
+  const startedAt = +Date.now();
   const cbDebounced = debounce(
     () => {
       const progress = source.writableEnded
@@ -592,7 +592,7 @@ function createSqlProgressStreams(cb: (progress: number) => void) {
     },
   });
 
-  return [source, sink] as const;
+  return [source, sink];
 }
 
 function createSqlOwnerTransformStream(databaseUsername: string) {

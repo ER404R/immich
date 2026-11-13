@@ -1,8 +1,10 @@
 <script lang="ts">
+  import { shortcut } from '#lib/actions/shortcut.ts';
   import { updateAlbumInfoMutation } from '#lib/queries/album.query.ts';
   import { executeMutation } from '#lib/queries/client.ts';
-  import { Textarea, shortcut } from '@immich/ui';
+  import { Textarea } from '@immich/ui';
   import { t } from 'svelte-i18n';
+  import { fromAction } from 'svelte/attachments';
 
   type Props = {
     id: string;
@@ -39,10 +41,10 @@
       onblur={handleUpdate}
       placeholder={$t('add_a_title')}
       class={textClasses}
-      {@attach shortcut({
+      {@attach fromAction(shortcut, () => ({
         shortcut: { key: 'Enter' },
         onShortcut: (event) => event.currentTarget.blur(),
-      })}
+      }))}
     />
   {:else}
     <div class={textClasses}>{newAlbumName}</div>

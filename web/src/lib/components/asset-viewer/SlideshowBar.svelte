@@ -1,11 +1,12 @@
 <script lang="ts">
+  import { shortcuts, type ShortcutOptions } from '#lib/actions/shortcut.ts';
   import ProgressBar from '#lib/components/shared-components/progress-bar/ProgressBar.svelte';
   import { ProgressBarStatus } from '#lib/constants.ts';
   import { languageManager } from '#lib/managers/language-manager.svelte.ts';
   import SlideshowSettingsModal from '#lib/modals/SlideshowSettingsModal.svelte';
   import { SlideshowNavigation, SlideshowState, slideshowStore } from '#lib/stores/slideshow.store.ts';
   import { AssetTypeEnum } from '@immich/sdk';
-  import { IconButton, modalManager, shortcuts, type ShortcutOptions } from '@immich/ui';
+  import { IconButton, modalManager } from '@immich/ui';
   import { mdiChevronLeft, mdiChevronRight, mdiClose, mdiCog, mdiFullscreen, mdiPause, mdiPlay } from '@mdi/js';
   import { onDestroy, onMount } from 'svelte';
   import { useSwipe } from 'svelte-gestures';
@@ -172,7 +173,7 @@
   });
 </script>
 
-<svelte:window onmousemove={showControlBar} {@attach shortcuts(shortcutBindings)} />
+<svelte:document onmousemove={showControlBar} use:shortcuts={shortcutBindings} />
 
 {/* @ts-expect-error https://github.com/Rezi/svelte-gestures/issues/38#issuecomment-3315953573 */ null}
 <svelte:body {@attach swipe} {onswipe} {onswipedown} />

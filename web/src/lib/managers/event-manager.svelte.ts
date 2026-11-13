@@ -1,5 +1,6 @@
 import type { TimelineAsset } from '#lib/managers/timeline-manager/types.ts';
 import { BaseEventManager } from '#lib/utils/base-event-manager.svelte.ts';
+import type { TreeNode } from '#lib/utils/tree-utils.ts';
 import type {
   AdminConfigDto,
   AlbumResponseDto,
@@ -11,8 +12,10 @@ import type {
   LoginResponseDto,
   PasskeyResponseDto,
   PersonResponseDto,
+  QueueResponseDto,
   ReleaseEventV1,
   StackResponseDto,
+  TagResponseDto,
   UserAdminResponseDto,
 } from '@immich/sdk';
 
@@ -61,11 +64,17 @@ export type Events = {
   BackupDeleted: [{ filename: string }];
   BackupUpload: [{ progress: number; isComplete: boolean }];
 
+  QueueUpdate: [QueueResponseDto];
+
   StackCreate: [StackResponseDto];
   /** Unstacked, with assets to handle */
   StackDelete: [{ id: string; assets: AssetResponseDto[] }];
   /** Contains the new stack. If any assets are removed, AssetUpdate events are emitted for each. */
   StackUpdate: [StackResponseDto];
+
+  TagCreate: [TagResponseDto];
+  TagUpdate: [TagResponseDto];
+  TagDelete: [TreeNode];
 
   UserPinCodeReset: [];
 

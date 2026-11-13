@@ -48,7 +48,7 @@
   };
 
   const getConfigEntries = (config: WorkflowStepDto['config']) =>
-    Object.entries(config ?? {}).filter(([, value]) => ![null, undefined, ''].includes(value));
+    Object.entries(config ?? {}).filter(([, value]) => value !== null && value !== undefined && value !== '');
 
   const asciiSummary = $derived.by(() => {
     const lines: string[] = [];
@@ -96,7 +96,7 @@
   };
 </script>
 
-<svelte:window {@attach shortcut({ shortcut: { key: 'Escape' }, onShortcut: () => (isOpen = false) })} />
+<svelte:document use:shortcut={{ shortcut: { key: 'Escape' }, onShortcut: () => (isOpen = false) }} />
 
 {#if isOpen}
   <aside

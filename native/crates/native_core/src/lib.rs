@@ -3,7 +3,7 @@ pub use codecs;
 #[cfg(feature = "convert")]
 pub mod convert;
 #[cfg(feature = "rotate")]
-pub use codecs::rotate;
+pub mod rotate;
 #[cfg(feature = "thumbhash")]
 pub mod thumbhash;
 

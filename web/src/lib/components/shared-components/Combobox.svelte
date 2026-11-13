@@ -21,7 +21,8 @@
 
 <script lang="ts">
   import { focusOutside } from '#lib/actions/focus-outside.ts';
-  import { Icon, IconButton, Label, shortcuts } from '@immich/ui';
+  import { shortcuts } from '#lib/actions/shortcut.ts';
+  import { Icon, IconButton, Label } from '@immich/ui';
   import { mdiChevronDown, mdiClose, mdiMagnify } from '@mdi/js';
   import { onMount, tick } from 'svelte';
   import { t } from 'svelte-i18n';
@@ -256,8 +257,8 @@
 {/if}
 <div
   class="relative w-full text-base text-gray-700 dark:text-gray-300"
-  {@attach focusOutside({ onFocusOut: deactivate })}
-  {@attach shortcuts([
+  use:focusOutside={{ onFocusOut: deactivate }}
+  use:shortcuts={[
     {
       shortcut: { key: 'Escape' },
       onShortcut: (event) => {
@@ -265,7 +266,7 @@
         closeDropdown();
       },
     },
-  ])}
+  ]}
 >
   <div>
     {#if isActive}
@@ -296,8 +297,8 @@
       role="combobox"
       type="text"
       value={searchQuery}
-      {@attach forceFocusInput}
-      {@attach shortcuts([
+      use:forceFocusInput
+      use:shortcuts={[
         {
           shortcut: { key: 'ArrowUp' },
           onShortcut: () => {
@@ -338,7 +339,7 @@
             closeDropdown();
           },
         },
-      ])}
+      ]}
     />
 
     <div

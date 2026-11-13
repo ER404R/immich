@@ -2,39 +2,43 @@
   import { handlePromiseError } from '#lib/utils.ts';
   import { tick, type Snippet } from 'svelte';
 
-  export function portal(target: HTMLElement | string = 'body') {
-    return (element: HTMLElement) => {
-      let targetElement;
-      handlePromiseError(
-        (async () => {
-          if (typeof target === 'string') {
-            targetElement = document.querySelector(target);
-            if (targetElement === null) {
-              await tick();
-              targetElement = document.querySelector(target);
-            }
-            if (targetElement === null) {
-              throw new Error(`No element found matching css selector: "${target}"`);
-            }
-          } else if (target instanceof HTMLElement) {
-            targetElement = target;
-          } else {
-            throw new TypeError(
-              `Unknown portal target type: ${
-                target === null ? 'null' : typeof target
-              }. Allowed types: string (CSS selector) or HTMLElement.`,
-            );
-          }
-          targetElement.append(element);
-          element.hidden = false;
-        })(),
-      );
-
-      return () => {
-        if (element.parentNode) {
-          element.remove();
+  /** Usage: <div use:portal={'css selector'}> or <div use:portal={document.body}> */
+  export function portal(element: HTMLElement, target: HTMLElement | string = 'body') {
+    let targetElement;
+    async function update(newTarget: HTMLElement | string) {
+      target = newTarget;
+      if (typeof target === 'string') {
+        targetElement = document.querySelector(target);
+        if (targetElement === null) {
+          await tick();
+          targetElement = document.querySelector(target);
         }
-      };
+        if (targetElement === null) {
+          throw new Error(`No element found matching css selector: "${target}"`);
+        }
+      } else if (target instanceof HTMLElement) {
+        targetElement = target;
+      } else {
+        throw new TypeError(
+          `Unknown portal target type: ${
+            target === null ? 'null' : typeof target
+          }. Allowed types: string (CSS selector) or HTMLElement.`,
+        );
+      }
+      targetElement.append(element);
+      element.hidden = false;
+    }
+
+    function destroy() {
+      if (element.parentNode) {
+        element.remove();
+      }
+    }
+
+    handlePromiseError(update(target));
+    return {
+      update,
+      destroy,
     };
   }
 </script>
@@ -67,6 +71,6 @@ Used for every occurrence of an HTML tag in a message
   let { target = 'body', children }: Props = $props();
 </script>
 
-<div {@attach portal(target)} hidden>
+<div use:portal={target} hidden>
   {@render children?.()}
 </div>

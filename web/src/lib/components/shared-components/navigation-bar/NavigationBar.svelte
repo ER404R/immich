@@ -117,10 +117,10 @@
         <ThemeButton />
 
         <div
-          {@attach clickOutside({
+          use:clickOutside={{
             onOutclick: () => (shouldShowNotificationPanel = false),
             onEscape: () => (shouldShowNotificationPanel = false),
-          })}
+          }}
         >
           <div class="relative">
             <IconButton
@@ -150,10 +150,10 @@
         <ActionButton action={Cast} />
 
         <div
-          {@attach clickOutside({
+          use:clickOutside={{
             onOutclick: () => (shouldShowAccountInfoPanel = false),
             onEscape: () => (shouldShowAccountInfoPanel = false),
-          })}
+          }}
         >
           <button
             type="button"

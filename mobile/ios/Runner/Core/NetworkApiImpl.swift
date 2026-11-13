@@ -100,10 +100,6 @@ class NetworkApiImpl: NetworkApi {
       URLSessionManager.shared.recreateSession()
     }
   }
-
-  func clearCookies() throws {
-    URLSessionManager.clearCookies()
-  }
 }
 
 private class CertImporter: NSObject, UIDocumentPickerDelegate {

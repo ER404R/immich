@@ -1,22 +1,16 @@
 <script lang="ts">
+  import { shortcuts } from '#lib/actions/shortcut.ts';
   import UserPageLayout from '#lib/components/layouts/UserPageLayout.svelte';
   import { assetViewerManager } from '#lib/managers/asset-viewer-manager.svelte.ts';
   import { languageManager } from '#lib/managers/language-manager.svelte.ts';
   import ShortcutsModal from '#lib/modals/ShortcutsModal.svelte';
-  import { createPreloadedQuery, executeMutation } from '#lib/queries/client.ts';
+  import { createPreloadedQuery } from '#lib/queries/client.ts';
   import { getUserConfigQuery } from '#lib/queries/config-user.query.ts';
-  import {
-    deleteDuplicatesMutation,
-    getAssetDuplicatesQuery,
-    removeDuplicateGroups,
-    resolveDuplicatesMutation,
-  } from '#lib/queries/duplicate.query.ts';
-  import { createStackMutation } from '#lib/queries/stack.query.ts';
   import { Route } from '#lib/route.ts';
   import { locale } from '#lib/stores/preferences.store.ts';
   import { handleError } from '#lib/utils/handle-error.ts';
-  import { updateAssets, type AssetResponseDto } from '@immich/sdk';
-  import { Button, HStack, IconButton, Text, modalManager, shortcuts, toastManager } from '@immich/ui';
+  import { createStack, deleteDuplicates, resolveDuplicates, updateAssets, type AssetResponseDto } from '@immich/sdk';
+  import { Button, HStack, IconButton, Text, modalManager, toastManager } from '@immich/ui';
   import {
     mdiCheckOutline,
     mdiChevronLeft,
@@ -33,18 +27,14 @@
   import DuplicatesCompareControl from './DuplicatesCompareControl.svelte';
   import LinkToDocs from './LinkToDocs.svelte';
 
-  const queries = {
-    config: createPreloadedQuery(getUserConfigQuery),
-    duplicates: createPreloadedQuery(getAssetDuplicatesQuery),
-  };
-  const config = $derived(queries.config.data);
-  const duplicates = $derived(queries.duplicates.data);
+  const query = createPreloadedQuery(getUserConfigQuery);
+  const config = $derived(query.data);
 
   interface Props {
     data: PageData;
   }
 
-  let { data }: Props = $props();
+  let { data = $bindable() }: Props = $props();
 
   interface Shortcuts {
     general: ExplainedShortcut[];
@@ -67,6 +57,7 @@
     ],
   };
 
+  let duplicates = $state(data.duplicates);
   let showMore = $state(false);
 
   const correctDuplicatesIndex = (index: number) => {
@@ -90,7 +81,11 @@
       }
     }
 
-    return callback();
+    try {
+      return await callback();
+    } catch (error) {
+      handleError(error, $t('errors.unable_to_resolve_duplicate'));
+    }
   };
 
   const deletedNotification = (trashedCount: number) => {
@@ -112,21 +107,21 @@
       async () => {
         const keepAssetIds = duplicateAssetIds.filter((id) => !trashIds.includes(id));
 
-        await executeMutation(
-          resolveDuplicatesMutation,
-          [{ duplicateResolveDto: { groups: [{ duplicateId, keepAssetIds, trashAssetIds: trashIds }] } }],
-          {
-            onSuccess: ([{ success, error, errorMessage = error }]) => {
-              if (!success) {
-                handleError(new Error(errorMessage), $t('errors.unable_to_resolve_duplicate'));
-                return;
-              }
-
-              deletedNotification(trashIds.length);
-              void navigateToIndex(duplicatesIndex);
-            },
+        const response = await resolveDuplicates({
+          duplicateResolveDto: {
+            groups: [{ duplicateId, keepAssetIds, trashAssetIds: trashIds }],
           },
-        );
+        });
+
+        const { success, error, errorMessage = error } = response[0];
+        if (!success) {
+          throw new Error(errorMessage);
+        }
+
+        duplicates = duplicates.filter((duplicate) => duplicate.duplicateId !== duplicateId);
+
+        deletedNotification(trashIds.length);
+        await navigateToIndex(duplicatesIndex);
       },
       shouldConfirmDelete ? $t('delete_duplicates_confirmation') : undefined,
       shouldConfirmDelete ? $t('permanently_delete') : undefined,
@@ -135,14 +130,9 @@
 
   const handleStack = async (duplicateId: string, assets: AssetResponseDto[]) => {
     const assetIds = assets.map((asset) => asset.id);
-    await executeMutation(createStackMutation, [{ stackCreateDto: { assetIds } }], {
-      onSuccess: () => void handleStacked(duplicateId, assetIds),
-    });
-  };
-
-  const handleStacked = async (duplicateId: string, assetIds: string[]) => {
+    await createStack({ stackCreateDto: { assetIds } });
     await updateAssets({ assetBulkUpdateDto: { ids: assetIds, duplicateId: null } });
-    removeDuplicateGroups([duplicateId]);
+    duplicates = duplicates.filter((duplicate) => duplicate.duplicateId !== duplicateId);
     await navigateToIndex(duplicatesIndex);
   };
 
@@ -164,25 +154,31 @@
 
     return withConfirmation(
       async () => {
-        const groups = duplicates.map((group) => {
-          const keepIds = new Set(group.suggestedKeepAssetIds);
-          return {
-            duplicateId: group.duplicateId,
-            keepAssetIds: group.suggestedKeepAssetIds,
-            trashAssetIds: group.assets.map((asset) => asset.id).filter((id) => !keepIds.has(id)),
-          };
-        });
-
-        await executeMutation(resolveDuplicatesMutation, [{ duplicateResolveDto: { groups } }], {
-          onSuccess: (response) => {
-            if (response.some(({ success }) => !success)) {
-              toastManager.danger($t('errors.unable_to_resolve_duplicate'));
-            }
-
-            deletedNotification(idsToDelete.length);
-            void goto(Route.duplicatesUtility());
+        // Resolve all groups in a single batch request
+        const response = await resolveDuplicates({
+          duplicateResolveDto: {
+            groups: duplicates.map((group) => {
+              const keepIds = new Set(group.suggestedKeepAssetIds);
+              return {
+                duplicateId: group.duplicateId,
+                keepAssetIds: group.suggestedKeepAssetIds,
+                trashAssetIds: group.assets.map((asset) => asset.id).filter((id) => !keepIds.has(id)),
+              };
+            }),
           },
         });
+
+        // Count failures and show appropriate message
+        const failedCount = response.filter(({ success }) => !success).length;
+        if (failedCount > 0) {
+          toastManager.danger($t('errors.unable_to_resolve_duplicate'));
+        }
+
+        duplicates = [];
+
+        deletedNotification(idsToDelete.length);
+
+        await goto(Route.duplicatesUtility());
       },
       prompt,
       confirmText,
@@ -193,9 +189,12 @@
     const ids = duplicates.map(({ duplicateId }) => duplicateId);
     return withConfirmation(
       async () => {
-        await executeMutation(deleteDuplicatesMutation, [{ bulkIdsDto: { ids } }], {
-          onSuccess: () => void goto(Route.duplicatesUtility()),
-        });
+        await deleteDuplicates({ bulkIdsDto: { ids } });
+
+        duplicates = [];
+
+        toastManager.primary($t('resolved_all_duplicates'));
+        await goto(Route.duplicatesUtility());
       },
       $t('bulk_keep_duplicates_confirmation', { values: { count: ids.length } }),
       $t('confirm'),
@@ -211,15 +210,13 @@
     goto(Route.duplicatesUtility({ index: correctDuplicatesIndex(index) }));
 </script>
 
-<svelte:window
-  {@attach shortcuts(
-    assetViewerManager.isViewing
-      ? []
-      : [
-          { shortcut: { key: 'ArrowLeft' }, onShortcut: handlePrevious },
-          { shortcut: { key: 'ArrowRight' }, onShortcut: handleNext },
-        ],
-  )}
+<svelte:document
+  use:shortcuts={assetViewerManager.isViewing
+    ? []
+    : [
+        { shortcut: { key: 'ArrowLeft' }, onShortcut: handlePrevious },
+        { shortcut: { key: 'ArrowRight' }, onShortcut: handleNext },
+      ]}
 />
 
 <UserPageLayout title={data.meta.title + ` (${duplicates.length.toLocaleString($locale)})`} scrollbar={true}>

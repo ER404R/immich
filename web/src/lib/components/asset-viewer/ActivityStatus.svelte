@@ -4,7 +4,6 @@
   import type { ActivityResponseDto } from '@immich/sdk';
   import { Button } from '@immich/ui';
   import { mdiCommentOutline, mdiThumbUp, mdiThumbUpOutline } from '@mdi/js';
-  import { t } from 'svelte-i18n';
 
   interface Props {
     isLiked: ActivityResponseDto | null;
@@ -21,8 +20,6 @@
   <Button
     {disabled}
     onclick={onFavorite}
-    aria-label={$t('like')}
-    aria-pressed={!!isLiked}
     leadingIcon={isLiked ? mdiThumbUp : mdiThumbUpOutline}
     shape="round"
     size="large"
@@ -36,7 +33,6 @@
   </Button>
   <Button
     onclick={() => assetViewerManager.toggleActivityPanel()}
-    aria-label={$t('activity')}
     leadingIcon={mdiCommentOutline}
     shape="round"
     size="large"

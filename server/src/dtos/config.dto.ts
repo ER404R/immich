@@ -545,6 +545,7 @@ const UserConfigSchema = applyVisibility(User)! as z.ZodType<DeepPartial<SystemC
 const PublicConfigSchema = applyVisibility(Public)! as z.ZodType<DeepPartial<SystemConfig>>;
 
 // prevent visibility metadata from leaking to openapi spec
+// eslint-disable-next-line unicorn/no-top-level-side-effects
 stripVisibilityMetadata(AdminConfigSchemaWithVisibility);
 
 const ConfigTemplateStorageOptionSchema = z
@@ -725,7 +726,7 @@ export const defaults = Object.freeze<SystemConfig>({
     allowInsecureRequests: false,
   },
   passkey: {
-    enabled: true,
+    enabled: false,
     domain: null,
     additionalDomains: [],
   },

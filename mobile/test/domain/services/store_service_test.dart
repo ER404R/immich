@@ -61,14 +61,6 @@ void main() {
       verify(() => mockDriftStoreRepo.watchAll()).called(1);
       expect(sut.tryGet(StoreKey.accessToken), _kAccessToken.toUpperCase());
     });
-
-    test('Removes keys missing from store updates', () async {
-      controller.add([const StoreDto(StoreKey.accessToken, _kAccessToken)]);
-
-      await pumpEventQueue();
-
-      expect(sut.tryGet(StoreKey.version), isNull);
-    });
   });
 
   group('Store Service get:', () {

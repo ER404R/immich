@@ -399,13 +399,13 @@ export class BaseConfig implements VideoCodecSWConfig {
     };
   }
 
-  getToneMapping(videoStream: VideoStreamInfo, format = 'yuv420p') {
+  getToneMapping(videoStream: VideoStreamInfo) {
     if (!this.shouldToneMap(videoStream)) {
       return [];
     }
 
     const { primaries, transfer, matrix } = this.getColors();
-    const options = `tonemapx=tonemap=${this.config.tonemap}:desat=0:p=${primaries}:t=${transfer}:m=${matrix}:r=pc:peak=100:format=${format}`;
+    const options = `tonemapx=tonemap=${this.config.tonemap}:desat=0:p=${primaries}:t=${transfer}:m=${matrix}:r=pc:peak=100:format=yuv420p`;
     return [options];
   }
 
@@ -818,15 +818,6 @@ export class QsvSwDecodeConfig extends BaseHWConfig {
     return options;
   }
 
-  getToneMapping(videoStream: VideoStreamInfo) {
-    // Output nv12 when tone-mapping instead of having ffmpeg convert from yuv420p
-    const options = super.getToneMapping(videoStream, 'nv12');
-    if (options.length === 0 && videoStream.pixelFormat !== 'nv12') {
-      options.push('format=nv12');
-    }
-    return options;
-  }
-
   getPresetOptions() {
     let presetIndex = this.getPresetIndex();
     if (presetIndex < 0) {
@@ -958,15 +949,6 @@ export class VaapiSwDecodeConfig extends BaseHWConfig {
       options.push(`scale_vaapi=${this.getScaling(videoStream)}:mode=hq:out_range=pc:format=nv12`);
     }
 
-    return options;
-  }
-
-  getToneMapping(videoStream: VideoStreamInfo) {
-    // some drivers (e.g. Mesa radeonsi on AMD) reject yuv420p surfaces and FFmpeg doesn't auto-convert for VAAPI
-    const options = super.getToneMapping(videoStream, 'nv12');
-    if (options.length === 0 && videoStream.pixelFormat !== 'nv12') {
-      options.push('format=nv12');
-    }
     return options;
   }
 

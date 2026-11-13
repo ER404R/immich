@@ -1,6 +1,7 @@
 <script lang="ts">
+  import { shortcuts } from '#lib/actions/shortcut.ts';
   import { transformManager } from '#lib/managers/edit/transform-manager.svelte.ts';
-  import { Button, HStack, IconButton, shortcuts } from '@immich/ui';
+  import { Button, HStack, IconButton } from '@immich/ui';
   import { mdiFlipHorizontal, mdiFlipVertical, mdiRotateLeft, mdiRotateRight } from '@mdi/js';
   import { t } from 'svelte-i18n';
 
@@ -67,11 +68,11 @@
   }
 </script>
 
-<svelte:window
-  {@attach shortcuts([
+<svelte:document
+  use:shortcuts={[
     { shortcut: { key: ']' }, onShortcut: () => rotateImage(90) },
     { shortcut: { key: '[' }, onShortcut: () => rotateImage(-90) },
-  ])}
+  ]}
 />
 
 <div class="mt-3 px-4">

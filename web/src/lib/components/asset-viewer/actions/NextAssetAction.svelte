@@ -1,6 +1,7 @@
 <script lang="ts">
+  import { shortcuts } from '#lib/actions/shortcut.ts';
   import { languageManager } from '#lib/managers/language-manager.svelte.ts';
-  import { Icon, shortcuts } from '@immich/ui';
+  import { Icon } from '@immich/ui';
   import { mdiChevronLeft, mdiChevronRight } from '@mdi/js';
   import { t } from 'svelte-i18n';
   import NavigationArea from '../NavigationArea.svelte';
@@ -12,11 +13,11 @@
   let { onNextAsset }: Props = $props();
 </script>
 
-<svelte:window
-  {@attach shortcuts([
+<svelte:document
+  use:shortcuts={[
     { shortcut: { key: 'ArrowRight' }, onShortcut: onNextAsset },
     { shortcut: { key: 'd' }, onShortcut: onNextAsset },
-  ])}
+  ]}
 />
 
 <NavigationArea onClick={onNextAsset} label={$t('view_next_asset')}>

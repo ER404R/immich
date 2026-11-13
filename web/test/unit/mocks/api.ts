@@ -16,15 +16,7 @@ const parseBody = async (request: Request) => {
   }
 };
 
-const browserFetch = fetch;
-
-const mockFetch = (input: RequestInfo | URL, init?: RequestInit) => {
-  const request = new Request(input, init);
-  if (request.url.startsWith('data:')) {
-    return browserFetch(request);
-  }
-  return MockFetch.instance.handle(request);
-};
+const mockFetch = (input: RequestInfo | URL, init?: RequestInit) => MockFetch.instance.handle(new Request(input, init));
 
 export class MockFetch extends Dispatcher {
   private static active?: MockFetch;

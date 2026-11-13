@@ -1,8 +1,10 @@
 <script lang="ts">
+  import { shortcut } from '#lib/actions/shortcut.ts';
   import { handleError } from '#lib/utils/handle-error.ts';
   import { updateAsset, type AssetResponseDto } from '@immich/sdk';
-  import { Textarea, shortcut, toastManager } from '@immich/ui';
+  import { Textarea, toastManager } from '@immich/ui';
   import { t } from 'svelte-i18n';
+  import { fromAction } from 'svelte/attachments';
 
   interface Props {
     asset: AssetResponseDto;
@@ -38,10 +40,10 @@
       onfocusout={handleFocusOut}
       placeholder={$t('add_a_description')}
       data-testid="autogrow-textarea"
-      {@attach shortcut({
+      {@attach fromAction(shortcut, () => ({
         shortcut: { key: 'Enter', ctrl: true },
         onShortcut: (e) => e.currentTarget.blur(),
-      })}
+      }))}
     />
   </section>
 {:else if description}

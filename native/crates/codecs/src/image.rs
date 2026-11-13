@@ -5,7 +5,6 @@ use std::slice;
 
 use crate::color::CicpProfile;
 use crate::resize::{self, Lanczos};
-use crate::rotate::{self, Orientation};
 
 /// Decoded pixels and the colour space they are in.
 pub struct Image {
@@ -93,36 +92,58 @@ impl<T> Pixels<T> {
         Some(self)
     }
 
-    /// Resamples premultiplied pixels to `size` with Lanczos3 in a new buffer, or else frees
-    /// everything after the pixels.
-    pub(crate) fn resize(self, alpha: bool, size: Option<(usize, usize)>) -> Option<Self>
+    /// Premultiplies if `alpha`, then resizes to `size`, or else frees everything after the pixels.
+    pub(crate) fn premultiply_resize(
+        mut self,
+        alpha: bool,
+        size: Option<(usize, usize)>,
+    ) -> Option<Self>
     where
         T: Sample,
     {
-        let Some((tw, th)) = size else {
+        if alpha {
+            self.premultiply();
+        }
+        let Some(size) = size else {
             return self.shrink();
         };
-        let mut out = Self::zeroed(tw, th, size_of::<[T; 4]>())?;
-        resize::lanczos(&self, &mut out)?;
+        let mut out = self.resize(size)?;
         if alpha {
             // Lanczos3 overshoots, while premultiplied colour must stay within alpha.
-            clamp(out.pixels_mut());
+            out.clamp();
         }
         Some(out)
     }
 
-    /// Turns the pixels to `orientation`, in a new buffer unless it's [`Orientation::Normal`].
-    pub(crate) fn rotate(self, orientation: Orientation) -> Option<Self>
+    fn premultiply(&mut self)
     where
         T: Sample,
     {
-        if matches!(orientation, Orientation::Normal) {
-            return Some(self);
+        // Alpha scaling itself at full opacity lets this vectorize as every lane does the same work.
+        for px in self.pixels_mut() {
+            let [r, g, b, a] = *px;
+            *px = [r.scale(a), g.scale(a), b.scale(a), a.scale(T::MAX)];
         }
-        let (w, h) = (self.width, self.height);
-        let (ow, oh) = orientation.dimensions(w, h);
-        let mut out = Self::zeroed(ow, oh, size_of::<[T; 4]>())?;
-        rotate::rotate(self.pixels(), w, w, h, orientation, out.pixels_mut());
+    }
+
+    /// Clamps colour to alpha.
+    fn clamp(&mut self)
+    where
+        T: Sample,
+    {
+        for px in self.pixels_mut() {
+            let a = px[3];
+            *px = px.map(|c| c.min(a));
+        }
+    }
+
+    /// The pixels resampled to `size` with Lanczos3, in a new buffer.
+    fn resize(&self, (tw, th): (usize, usize)) -> Option<Self>
+    where
+        T: Sample,
+    {
+        let mut out = Self::zeroed(tw, th, size_of::<[T; 4]>())?;
+        resize::lanczos(self, &mut out)?;
         Some(out)
     }
 
@@ -143,23 +164,6 @@ impl<T> Pixels<T> {
     /// Hands the buffer to a C caller, who frees it with free().
     pub fn into_raw(self) -> *mut u8 {
         ManuallyDrop::new(self).buf.as_ptr().cast()
-    }
-}
-
-pub(crate) fn premultiply<T: Sample>(pixels: &mut [[T; 4]]) {
-    // Alpha scaling itself at full opacity lets this vectorize as every lane does the same work.
-    for px in pixels {
-        let [r, g, b, a] = *px;
-        *px = [r.scale(a), g.scale(a), b.scale(a), a.scale(T::MAX)];
-    }
-}
-
-/// Clamps colour to alpha.
-pub(crate) fn clamp<T: Sample>(pixels: &mut [[T; 4]]) {
-    // As in premultiply, alpha scaling itself keeps every lane doing the same work.
-    for px in pixels {
-        let [r, g, b, a] = *px;
-        *px = [r.min(a), g.min(a), b.min(a), a.scale(T::MAX)];
     }
 }
 
@@ -187,8 +191,7 @@ mod tests {
                     [max, max, max, half]
                 };
             }
-            premultiply(px.pixels_mut());
-            let px = px.resize(true, Some((5, 5))).unwrap();
+            let px = px.premultiply_resize(true, Some((5, 5))).unwrap();
             for p in px.pixels() {
                 assert!(p[..3].iter().all(|&c| c <= p[3]), "{p:?}");
             }

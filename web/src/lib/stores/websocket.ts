@@ -64,6 +64,7 @@ export const websocketStore = {
 
 export const websocketEvents = createEventEmitter(websocket);
 
+// eslint-disable-next-line unicorn/no-top-level-side-effects
 websocket
   .on('connect', () => {
     eventManager.emit('WebsocketConnect');

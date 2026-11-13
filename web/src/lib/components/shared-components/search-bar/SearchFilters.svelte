@@ -1,8 +1,7 @@
 <script lang="ts">
   import { authManager } from '#lib/managers/auth-manager.svelte.ts';
   import { searchManager } from '#lib/managers/search-manager.svelte.ts';
-  import { getAllTagsQuery } from '#lib/queries/tag.query.ts';
-  import { type PersonResponseDto } from '@immich/sdk';
+  import { getAllTags, type PersonResponseDto, type TagResponseDto } from '@immich/sdk';
   import { Button, Text } from '@immich/ui';
   import {
     mdiAccount,
@@ -15,7 +14,6 @@
     mdiTagMultiple,
     mdiTune,
   } from '@mdi/js';
-  import { createQuery } from '@tanstack/svelte-query';
   import { onMount } from 'svelte';
   import { t } from 'svelte-i18n';
   import { fly } from 'svelte/transition';
@@ -67,8 +65,8 @@
   let showAdvanced = $state(false);
   let peoplePromise = $state<Promise<PersonResponseDto[]>>();
   let people = $state<PersonResponseDto[]>();
-  const tagsQuery = createQuery(() => ({ ...getAllTagsQuery(), enabled: !!searchManager.filter.tagIds?.size }));
-  const tags = $derived(tagsQuery.data);
+  let tagsPromise = $state<Promise<TagResponseDto[]>>();
+  let tags = $state<TagResponseDto[]>();
 
   let typeTitle = $derived(getSearchTypeTitle(searchManager.filter.queryType));
   let peopleTitle = $state<string>();
@@ -149,6 +147,11 @@
       peoplePromise = getPeople(searchManager.filter.personIds);
       void peoplePromise.then((res) => (people = res));
     }
+
+    if (searchManager.filter.tagIds?.size && !tagsPromise) {
+      tagsPromise = getAllTags();
+      void tagsPromise.then((res) => (tags = res));
+    }
   });
 
   $effect(() => {
@@ -223,7 +226,7 @@
           {:else if activeFilter === 'places'}
             <SearchLocationSection />
           {:else if activeFilter === 'tags'}
-            <SearchTagsSection bind:title={tagsTitle} />
+            <SearchTagsSection bind:title={tagsTitle} parentPromise={tagsPromise} />
           {:else if activeFilter === 'media'}
             <SearchMediaSection />
           {/if}

@@ -85,6 +85,31 @@ class GitSynchronizationTest(unittest.TestCase):
         self.assertEqual(self.run_git(self.origin, "show", "main:upstream.txt"), "release 3.4.0")
         self.assertEqual(self.run_git(self.origin, "show", "main:fork.txt"), "Immich-E")
 
+    def test_upstream_android_defaults_merge_with_separate_fork_identity(self):
+        app = "mobile/android/app"
+        (self.upstream / app).mkdir(parents=True)
+        source = Path(__file__).resolve().parents[2] / app
+        baseline = (source / "build.gradle").read_text().removesuffix("\napply from: 'fork.gradle'\n")
+        (self.upstream / app / "build.gradle").write_text(baseline)
+        self.commit(self.upstream, "Android baseline")
+        self.run_git(self.work, "fetch", str(self.upstream), "main")
+        self.run_git(self.work, "merge", "--no-edit", "FETCH_HEAD")
+        build = self.work / app / "build.gradle"
+        build.write_text(build.read_text() + "\napply from: 'fork.gradle'\n")
+        identity = Path(__file__).resolve().parents[2] / app / "fork.gradle"
+        (self.work / app / "fork.gradle").write_text(identity.read_text())
+        self.commit(self.work, "Separate fork identity")
+        self.run_git(self.work, "push", "origin", "main")
+        changed = baseline.replace('applicationId "app.alextran.immich"', 'applicationId "changed.upstream"')
+        self.assertNotEqual(changed, baseline)
+        (self.upstream / app / "build.gradle").write_text(changed)
+        official = self.upstream_release()
+        synchronize([official], str(self.upstream))
+        merged = self.run_git(self.origin, "show", f"main:{app}/build.gradle")
+        self.assertIn('applicationId "changed.upstream"', merged)
+        self.assertIn("apply from: 'fork.gradle'", merged)
+        self.assertEqual(self.run_git(self.origin, "show", f"main:{app}/fork.gradle"), identity.read_text().strip())
+
     def test_development_commits_after_release_are_not_merged(self):
         official = self.upstream_release()
         (self.upstream / "development-only.txt").write_text("unreleased\n")

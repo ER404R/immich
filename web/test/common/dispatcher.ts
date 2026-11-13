@@ -5,13 +5,7 @@ import { getOperation, hasOperation, matchOperation, toCall } from '#test/common
 import type { Call, Handler, Handlers, OperationId } from '#test/common/types.ts';
 
 const mutationMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
-const readOperations = new Set<OperationId>([
-  'searchAssets',
-  'searchSmart',
-  'getDownloadInfo',
-  'downloadArchive',
-  'checkBulkUpload',
-]);
+const readOperations = new Set<OperationId>(['searchAssets', 'getDownloadInfo', 'downloadArchive', 'checkBulkUpload']);
 
 export type Response = {
   status: number;

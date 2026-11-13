@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { shortcuts } from '#lib/actions/shortcut.ts';
   import { zoomImageAction } from '#lib/actions/zoom-image.ts';
   import AdaptiveImage from '#lib/components/AdaptiveImage.svelte';
   import AssetViewerEvents from '#lib/components/AssetViewerEvents.svelte';
@@ -17,7 +18,7 @@
   import { getOcrBoundingBoxes } from '#lib/utils/ocr-utils.ts';
   import { getBoundingBox, type BoundingBox } from '#lib/utils/people-utils.ts';
   import { type SharedLinkResponseDto } from '@immich/sdk';
-  import { shortcuts, toastManager } from '@immich/ui';
+  import { toastManager } from '@immich/ui';
   import { onDestroy, untrack } from 'svelte';
   import { useSwipe, type SwipeCustomEvent } from 'svelte-gestures';
   import { t } from 'svelte-i18n';
@@ -205,13 +206,13 @@
 
 <AssetViewerEvents {onCopy} {onZoom} {onFaceEditModeChange} />
 
-<svelte:window
-  {@attach shortcuts([
+<svelte:document
+  use:shortcuts={[
     { shortcut: { key: 'z' }, onShortcut: onZoom, preventDefault: true },
     { shortcut: { key: 's' }, onShortcut: onPlaySlideshow, preventDefault: true },
     { shortcut: { key: 'c', ctrl: true }, onShortcut: onCopyShortcut, preventDefault: false },
     { shortcut: { key: 'c', meta: true }, onShortcut: onCopyShortcut, preventDefault: false },
-  ])}
+  ]}
 />
 
 <div
@@ -221,7 +222,7 @@
   bind:clientHeight={containerHeight}
   role="presentation"
   ondblclick={onZoom}
-  {@attach zoomImageAction({ zoomTarget: adaptiveImage })}
+  use:zoomImageAction={{ zoomTarget: adaptiveImage }}
   {...useSwipe((event) => onSwipe?.(event))}
 >
   <AdaptiveImage

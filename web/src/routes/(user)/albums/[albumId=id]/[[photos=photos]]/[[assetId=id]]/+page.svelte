@@ -22,18 +22,12 @@
   import SelectAllAssets from '#lib/components/timeline/actions/SelectAllAction.svelte';
   import SetVisibilityAction from '#lib/components/timeline/actions/SetVisibilityAction.svelte';
   import { AlbumPageViewMode } from '#lib/constants.ts';
+  import { activityManager } from '#lib/managers/activity-manager.svelte.ts';
   import { AssetMultiSelectManager, assetMultiSelectManager } from '#lib/managers/asset-multi-select-manager.svelte.ts';
   import { assetViewerManager } from '#lib/managers/asset-viewer-manager.svelte.ts';
   import { authManager } from '#lib/managers/auth-manager.svelte.ts';
   import { TimelineManager } from '#lib/managers/timeline-manager/timeline-manager.svelte.ts';
   import type { TimelineAsset } from '#lib/managers/timeline-manager/types.ts';
-  import {
-    createActivityMutation,
-    deleteActivityMutation,
-    getActivityStatisticsQuery,
-    getMyLikeQuery,
-    invalidateActivities,
-  } from '#lib/queries/activity.query.ts';
   import {
     deleteAlbumMutation,
     getAlbumInfoQuery,
@@ -49,8 +43,9 @@
   import { SlideshowNavigation, SlideshowState, slideshowStore } from '#lib/stores/slideshow.store.ts';
   import { handlePromiseError } from '#lib/utils.ts';
   import { delay } from '#lib/utils/asset-utils.ts';
+  import { handleError } from '#lib/utils/handle-error.ts';
   import { isAlbumsRoute, navigate, type AssetGridRouteSearchParams } from '#lib/utils/navigation.ts';
-  import { AlbumUserRole, AssetVisibility, ReactionType } from '@immich/sdk';
+  import { AlbumUserRole, AssetVisibility } from '@immich/sdk';
   import { ActionButton, CommandPaletteDefaultProvider, Icon, IconButton } from '@immich/ui';
   import {
     mdiAccountEye,
@@ -64,7 +59,7 @@
     mdiPlus,
     mdiPresentationPlay,
   } from '@mdi/js';
-  import { createQuery, type MutationMeta } from '@tanstack/svelte-query';
+  import { onDestroy } from 'svelte';
   import { t } from 'svelte-i18n';
   import { fly } from 'svelte/transition';
   import { goto, onNavigate } from '$app/navigation';
@@ -74,37 +69,26 @@
 
   let { params }: PageProps = $props();
 
-  const albumQuery = createPreloadedQuery(() => getAlbumInfoQuery(params.albumId));
-  const album = $derived(albumQuery.data);
-  let viewMode: AlbumPageViewMode = $state(AlbumPageViewMode.VIEW);
-  const isShared = $derived(viewMode !== AlbumPageViewMode.SELECT_ASSETS && album.albumUsers.length > 1);
-
   const queries = {
     config: createPreloadedQuery(getUserConfigQuery),
-    activityStatistics: createQuery(() => ({
-      ...getActivityStatisticsQuery({ albumId: album.id }),
-      enabled: isShared,
-    })),
-    myLike: createQuery(() => ({ ...getMyLikeQuery({ albumId: album.id }), enabled: isShared })),
+    album: createPreloadedQuery(() => getAlbumInfoQuery(params.albumId)),
   };
   const config = $derived(queries.config.data);
-  const commentCount = $derived(queries.activityStatistics.data?.comments ?? 0);
-  const myLike = $derived(queries.myLike.data ?? null);
+  const album = $derived(queries.album.data);
   let { slideshowState, slideshowNavigation } = slideshowStore;
   let oldAt: AssetGridRouteSearchParams | null | undefined = $state();
+  let viewMode: AlbumPageViewMode = $state(AlbumPageViewMode.VIEW);
   let timelineManager = $state<TimelineManager>() as TimelineManager;
   let showAlbumUsers = $derived(timelineManager?.showAssetOwners ?? false);
 
   const timelineMultiSelectManager = new AssetMultiSelectManager();
 
   const handleFavorite = async () => {
-    const meta: MutationMeta = { error: { toast: 'errors.cant_change_asset_favorite' } };
-    await (myLike
-      ? executeMutation(() => deleteActivityMutation(meta), [{ id: myLike.id }])
-      : executeMutation(
-          () => createActivityMutation(meta),
-          [{ activityCreateDto: { albumId: album.id, type: ReactionType.Like } }],
-        ));
+    try {
+      await activityManager.toggleLike();
+    } catch (error) {
+      handleError(error, $t('errors.cant_change_asset_favorite'));
+    }
   };
 
   const handleStartSlideshow = async () => {
@@ -163,7 +147,6 @@
 
   const onAlbumRemoveAssets = async ({ albumIds }: { assetIds: string[]; albumIds: string[] }) => {
     if (albumIds.includes(album.id)) {
-      await invalidateActivities({ albumId: album.id });
       await delay(1000);
       await refreshAlbum();
     }
@@ -225,7 +208,7 @@
   const albumUsers = $derived(showAlbumUsers && containsEditors ? album.albumUsers.map(({ user }) => user) : []);
 
   $effect(() => {
-    if (!album.isActivityEnabled && commentCount === 0) {
+    if (!album.isActivityEnabled && activityManager.commentCount === 0) {
       assetViewerManager.closeActivityPanel();
     }
   });
@@ -241,10 +224,24 @@
     return { albumId, order: album.order };
   });
 
+  const isShared = $derived(viewMode !== AlbumPageViewMode.SELECT_ASSETS && album.albumUsers.length > 1);
+
+  $effect(() => {
+    if (assetViewerManager.isViewing || !isShared) {
+      return;
+    }
+
+    handlePromiseError(activityManager.init(album.id));
+  });
+
+  onDestroy(() => activityManager.reset());
+
   const isOwned = $derived(isAlbumOwner(album));
 
   let showActivityStatus = $derived(
-    album.albumUsers.length > 1 && !assetViewerManager.isViewing && (album.isActivityEnabled || commentCount > 0),
+    album.albumUsers.length > 1 &&
+      !assetViewerManager.isViewing &&
+      (album.isActivityEnabled || activityManager.commentCount > 0),
   );
   const isEditor = $derived(isAlbumEditor(album));
 
@@ -286,11 +283,7 @@
   });
 </script>
 
-<OnEvents
-  {onAlbumAddAssets}
-  {onAlbumRemoveAssets}
-  onAssetsDelete={() => Promise.all([refreshAlbum(), invalidateActivities({ albumId: album.id })])}
-/>
+<OnEvents {onAlbumAddAssets} {onAlbumRemoveAssets} onAssetsDelete={() => refreshAlbum()} />
 
 <CommandPaletteDefaultProvider name={$t('album')} actions={[AddAssets, Upload, Close, ...Object.values(Actions)]} />
 
@@ -389,8 +382,8 @@
         <div class="absolute inset-e-0 bottom-0 z-2 me-12 mb-6">
           <ActivityStatus
             disabled={!album.isActivityEnabled}
-            isLiked={myLike}
-            numberOfComments={commentCount}
+            isLiked={activityManager.isLiked}
+            numberOfComments={activityManager.commentCount}
             numberOfLikes={undefined}
             onFavorite={handleFavorite}
           />

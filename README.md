@@ -9,9 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="#">
-    <img src="design/immich-logo-stacked-light.svg" width="300" alt="Immich Logo">
-  </a>
+<img src="design/immich-logo-stacked-light.svg" width="300" title="Login With Custom URL">
 </p>
 <h3 align="center">High performance self-hosted photo and video management solution</h3>
 <br/>

@@ -1,4 +1,3 @@
-import { emptyMapStyleUrl } from '#test/common/helpers.ts';
 import type { ResponseOf } from '#test/common/types.ts';
 import {
   AudioCodec,
@@ -35,8 +34,8 @@ const publicConfig = (overrides: Partial<ResponseOf<'getPublicConfig'>> = {}): R
   ffmpeg: { realtime: { enabled: false } },
   map: {
     enabled: true,
-    lightStyle: emptyMapStyleUrl,
-    darkStyle: emptyMapStyleUrl,
+    lightStyle: 'https://tiles.immich.cloud/v1/style/light.json',
+    darkStyle: 'https://tiles.immich.cloud/v1/style/dark.json',
   },
   oauth: { autoLaunch: false, buttonText: 'Login with OAuth', enabled: false },
   passkey: { enabled: true },
